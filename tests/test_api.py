@@ -4,6 +4,7 @@ Tests Health, Inspections, Defects, Verifications, Duplicates, Analytics, and Re
 """
 from fastapi.testclient import TestClient
 from backend.app import app
+from backend.gis_belagavi import is_within_belagavi
 
 client = TestClient(app)
 
@@ -14,6 +15,22 @@ def test_health_check_endpoint():
     assert data["status"] == "healthy"
     assert data["service"] == "ROADVISION AI"
     assert "models" in data
+
+def test_inspection_locations_include_route_junctions_and_road_corridors():
+    response = client.get("/api/inspection/locations")
+    assert response.status_code == 200
+    data = response.json()
+    locations = {location["id"]: location for location in data["locations"]}
+
+    assert "junction:CHEN_CIRC" in locations
+    assert "junction:KANBARGI_CR" in locations
+    assert "junction:HALAGA_INT" in locations
+    assert "road:1" in locations
+    assert locations["road:1"]["name"] == "Khanapur Road (Tilakwadi to 3rd Gate)"
+    assert all(
+        is_within_belagavi(location["latitude"], location["longitude"])
+        for location in data["locations"]
+    )
 
 def test_get_inspections_endpoint():
     response = client.get("/api/inspections")
