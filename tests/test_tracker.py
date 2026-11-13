@@ -3,7 +3,8 @@ ROADVISION AI - Test Suite for Video Object Tracking Engine
 Tests persistent ID assignment, trajectory tracking, and unique defect counting.
 """
 import pytest
-from backend.tracker import VideoDamageTracker, TrackedDefect, compute_box_iou
+import numpy as np
+from backend.tracker import VideoDamageTracker, TrackedDefect, compute_box_iou, _draw_track_overlay
 
 def test_box_iou_calculation():
     box1 = [100, 100, 200, 200]
@@ -77,3 +78,20 @@ def test_persistent_unique_tracking():
     assert len(all_tracks) == 2
     track_ids = [t.track_id for t in all_tracks]
     assert t1_id in track_ids
+
+
+def test_video_track_overlay_draws_bounding_box():
+    tracker = VideoDamageTracker()
+    tracker.update_frame([{
+        "category_code": "D40",
+        "class_name": "pothole",
+        "display_name": "Pothole",
+        "bbox": [20, 30, 100, 90],
+        "confidence": 0.9,
+        "severity": "Moderate"
+    }], frame_idx=1, time_sec=0.1)
+    frame = np.zeros((120, 140, 3), dtype=np.uint8)
+
+    _draw_track_overlay(frame, tracker.active_tracks[0])
+
+    assert tuple(frame[30, 60]) == (0, 255, 255)

@@ -57,6 +57,33 @@ def compute_box_iou(boxA, boxB):
         return 0.0
     return interArea / unionArea
 
+
+def _draw_track_overlay(frame, track):
+    """Draws a visible bounding box and compact track label onto a video frame."""
+    height, width = frame.shape[:2]
+    x1 = max(0, min(width - 1, int(track.bbox[0])))
+    y1 = max(0, min(height - 1, int(track.bbox[1])))
+    x2 = max(0, min(width - 1, int(track.bbox[2])))
+    y2 = max(0, min(height - 1, int(track.bbox[3])))
+    if x2 <= x1 or y2 <= y1:
+        return
+
+    color = (0, 255, 255)
+    cv2.rectangle(frame, (x1, y1), (x2, y2), color, 2)
+
+    label = f"ID: {track.track_id} ({track.severity})"
+    cv2.putText(
+        frame,
+        label,
+        (x1, max(15, y1 - 5)),
+        cv2.FONT_HERSHEY_SIMPLEX,
+        0.4,
+        color,
+        1,
+        cv2.LINE_AA
+    )
+
+
 class VideoDamageTracker:
     def __init__(self, max_missed=20, iou_threshold=0.25, center_dist_thresh=85.0):
         self.max_missed = max_missed
@@ -213,23 +240,11 @@ def process_video_inspection(
 
             # Render overlay: Persistent Track ID and trajectories on annotated frame
             for track in tracker.active_tracks:
-                center = track.get_center()
                 pts = list(track.trajectory)
                 for i in range(1, len(pts)):
                     cv2.line(annotated_frame, pts[i - 1], pts[i], (0, 255, 255), 2)
 
-                # Track badge
-                tid_label = f"ID: {track.track_id} ({track.severity})"
-                cv2.putText(
-                    annotated_frame,
-                    tid_label,
-                    (track.bbox[0], max(15, track.bbox[1] - 24)),
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    0.55,
-                    (0, 255, 255),
-                    2,
-                    cv2.LINE_AA
-                )
+                _draw_track_overlay(annotated_frame, track)
 
             # Render global HUD on video
             cv2.rectangle(annotated_frame, (10, 10), (380, 80), (0, 0, 0), -1)

@@ -365,15 +365,15 @@ class RoadVisionDetector:
             cv2.addWeighted(overlay, 0.20, annotated, 0.80, 0, annotated)
 
             # Solid border
-            thickness = 2 if severity == "Minor" else (3 if severity == "Moderate" else 4)
-            cv2.rectangle(annotated, (x1, y1), (x2, y2), color, thickness)
+            cv2.rectangle(annotated, (x1, y1), (x2, y2), color, 1)
 
             # Label badge
             label = f"{display_name} {conf*100:.0f}% [{severity}]"
-            (tw, th), _ = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.52, 1)
-            badge_y1 = max(0, y1 - th - 8)
-            cv2.rectangle(annotated, (x1, badge_y1), (x1 + tw + 10, y1), color, -1)
-            cv2.putText(annotated, label, (x1 + 5, y1 - 4), cv2.FONT_HERSHEY_SIMPLEX, 0.52, (255, 255, 255), 1, cv2.LINE_AA)
+            font_scale = 0.4
+            (tw, th), _ = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, font_scale, 1)
+            badge_y1 = max(0, y1 - th - 6)
+            cv2.rectangle(annotated, (x1, badge_y1), (x1 + tw + 8, y1), color, -1)
+            cv2.putText(annotated, label, (x1 + 4, y1 - 3), cv2.FONT_HERSHEY_SIMPLEX, font_scale, (255, 255, 255), 1, cv2.LINE_AA)
 
         return annotated, detections, (lat, lon)
 
