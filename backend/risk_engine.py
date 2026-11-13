@@ -132,3 +132,87 @@ def calculate_road_risk_score(
     }
 
     return final_score, risk_level, breakdown
+
+
+def compute_road_condition(
+    potholes_count: int = 0,
+    total_damage_count: int = 0,
+    severe_count: int = 0,
+    moderate_count: int = 0,
+    minor_count: int = 0,
+    speed_limit: int = 60,
+    road_type: str = "Arterial"
+):
+    """
+    Computes Road Condition Percentage (0-100%) and 3-tier Risk Classification:
+    - RISKY / CRITICAL (Red): Condition < 50% or severe pothole count >= 2 or high-speed critical damage
+    - MODERATE (Yellow): Condition 50% - 79% (noticeable damage requiring maintenance)
+    - SAFE (Green): Condition >= 80% (minimal or no significant damage)
+    """
+    if potholes_count == 0 and total_damage_count == 0:
+        return {
+            "condition_percentage": 98.0,
+            "risk_classification": "SAFE",
+            "risk_display": "Safe",
+            "risk_color": "#10b981", # Green
+            "badge_class": "bg-emerald-100 text-emerald-800 border-emerald-300",
+            "status_text": "Good condition with minimal or no significant damage"
+        }
+
+    speed_factor = max(0.7, min(1.6, speed_limit / 50.0))
+    road_class_map = {"Highway": 1.3, "Arterial": 1.15, "Local": 1.0, "Residential": 0.85}
+    class_factor = road_class_map.get(road_type, 1.0)
+
+    # Estimate distribution if only total counts provided
+    s_cnt = severe_count
+    m_cnt = moderate_count
+    min_cnt = minor_count
+
+    if s_cnt == 0 and m_cnt == 0 and min_cnt == 0 and total_damage_count > 0:
+        if potholes_count >= 4:
+            s_cnt = max(1, potholes_count // 2)
+            m_cnt = potholes_count - s_cnt
+        elif potholes_count >= 2:
+            m_cnt = potholes_count
+        else:
+            min_cnt = max(1, total_damage_count)
+
+    # Pothole deduction (deep structural cavities)
+    pothole_penalty = (potholes_count * 11.5) * speed_factor * class_factor
+    # Severity deductions
+    severity_penalty = (s_cnt * 16.0 + m_cnt * 7.5 + min_cnt * 3.0) * speed_factor
+    # Cracks/other defects penalty
+    cracks_count = max(0, total_damage_count - potholes_count)
+    crack_penalty = (cracks_count * 4.0) * speed_factor
+
+    total_penalty = (pothole_penalty * 0.65) + (severity_penalty * 0.55) + crack_penalty
+    condition_pct = round(max(5.0, min(100.0, 100.0 - total_penalty)), 1)
+
+    # 3-Tier Classification
+    if condition_pct < 50.0 or s_cnt >= 2 or (potholes_count >= 3 and speed_limit >= 60):
+        classification = "RISKY"
+        display = "Risky / Critical"
+        color = "#ef4444" # Red
+        badge = "bg-rose-100 text-rose-800 border-rose-300"
+        status = "Severe damage and high safety risks. Urgent maintenance required."
+    elif condition_pct < 80.0:
+        classification = "MODERATE"
+        display = "Moderate"
+        color = "#f59e0b" # Yellow
+        badge = "bg-amber-100 text-amber-800 border-amber-300"
+        status = "Noticeable damage requiring planned maintenance."
+    else:
+        classification = "SAFE"
+        display = "Safe"
+        color = "#10b981" # Green
+        badge = "bg-emerald-100 text-emerald-800 border-emerald-300"
+        status = "Good condition with minimal or no significant damage."
+
+    return {
+        "condition_percentage": condition_pct,
+        "risk_classification": classification,
+        "risk_display": display,
+        "risk_color": color,
+        "badge_class": badge,
+        "status_text": status
+    }

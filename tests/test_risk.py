@@ -3,6 +3,7 @@ ROADVISION AI - Test Suite for Road Risk Assessment Engine
 Tests normalized 0-100 scoring, contributing factors, and risk tier categorization.
 """
 from backend.risk_engine import calculate_road_risk_score
+from backend.risk_engine import compute_road_condition
 
 def test_empty_defects_zero_risk():
     score, tier, breakdown = calculate_road_risk_score([])
@@ -54,3 +55,29 @@ def test_score_bounded_0_to_100():
         weather_condition="Rainy/Wet"
     )
     assert 0.0 <= score <= 100.0
+
+
+def test_single_low_severity_pothole_can_still_be_classified_healthy():
+    condition = compute_road_condition(
+        potholes_count=1,
+        total_damage_count=1,
+        minor_count=1,
+        speed_limit=40,
+        road_type="Local"
+    )
+
+    assert condition["condition_percentage"] >= 80.0
+    assert condition["risk_classification"] == "SAFE"
+
+
+def test_multiple_potholes_increase_condition_risk():
+    condition = compute_road_condition(
+        potholes_count=4,
+        total_damage_count=4,
+        moderate_count=4,
+        speed_limit=60,
+        road_type="Arterial"
+    )
+
+    assert condition["condition_percentage"] < 50.0
+    assert condition["risk_classification"] == "RISKY"
