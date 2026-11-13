@@ -21,10 +21,102 @@ let currentUser = {
 document.addEventListener("DOMContentLoaded", () => {
     initNavigation();
     initRoleSession();
+    updateMapKeyStatus();
     setupDropzone();
     setupVideoDropzone();
     setupCitizenDropzone();
+    loadInspectionLocations();
 });
+
+async function loadInspectionLocations() {
+    const selectors = ["citizen-road-name", "img-road-name", "vid-road-name"]
+        .map(id => document.getElementById(id))
+        .filter(Boolean);
+
+    try {
+        const response = await fetch("/api/inspection/locations");
+        if (!response.ok) {
+            throw new Error(`Location service returned HTTP ${response.status}`);
+        }
+        const data = await response.json();
+        if (data.status !== "success" || !Array.isArray(data.locations) || data.locations.length === 0) {
+            throw new Error("Location service returned no Belagavi locations");
+        }
+
+        selectors.forEach(select => {
+            const junctionGroup = document.createElement("optgroup");
+            junctionGroup.label = "Multi-Route Finder Locations";
+            const corridorGroup = document.createElement("optgroup");
+            corridorGroup.label = "Belagavi Road Corridors";
+
+            data.locations.forEach(location => {
+                const option = document.createElement("option");
+                option.value = location.id;
+                option.textContent = location.name;
+                option.dataset.locationName = location.name;
+                option.dataset.latitude = location.latitude;
+                option.dataset.longitude = location.longitude;
+                if (location.road_type) option.dataset.roadType = location.road_type;
+                if (location.speed_limit) option.dataset.speedLimit = location.speed_limit;
+                (location.kind === "junction" ? junctionGroup : corridorGroup).appendChild(option);
+            });
+
+            select.replaceChildren(junctionGroup, corridorGroup);
+            select.value = "junction:CHEN_CIRC";
+            if (!select.value && select.options.length > 0) select.selectedIndex = 0;
+            select.disabled = false;
+            select.addEventListener("change", () => applyInspectionLocation(select.id));
+            applyInspectionLocation(select.id);
+        });
+    } catch (error) {
+        console.error("Unable to load Belagavi inspection locations:", error);
+        selectors.forEach(select => {
+            select.replaceChildren(new Option("Belagavi locations unavailable — refresh to retry", ""));
+            select.disabled = true;
+        });
+    }
+}
+
+function getSelectedInspectionLocation(selectId) {
+    const select = document.getElementById(selectId);
+    const option = select && select.options[select.selectedIndex];
+    if (!option || !option.value) return null;
+
+    return {
+        name: option.dataset.locationName || option.textContent,
+        latitude: Number(option.dataset.latitude),
+        longitude: Number(option.dataset.longitude),
+        roadType: option.dataset.roadType,
+        speedLimit: option.dataset.speedLimit
+    };
+}
+
+function applyInspectionLocation(selectId) {
+    const location = getSelectedInspectionLocation(selectId);
+    if (!location) return;
+
+    if (selectId === "citizen-road-name") {
+        const coordinates = document.getElementById("citizen-coords");
+        if (coordinates) coordinates.value = `${location.latitude.toFixed(5)}, ${location.longitude.toFixed(5)}`;
+    }
+
+    const metadataFields = {
+        "citizen-road-name": { roadType: "citizen-road-type", speedLimit: "citizen-speed" },
+        "img-road-name": { roadType: "img-road-type", speedLimit: "img-speed-limit" },
+        "vid-road-name": { roadType: "vid-road-type", speedLimit: "vid-speed-limit" }
+    };
+    const fields = metadataFields[selectId];
+    if (fields && location.roadType) {
+        const roadType = document.getElementById(fields.roadType);
+        if (roadType && Array.from(roadType.options).some(option => option.value === location.roadType)) {
+            roadType.value = location.roadType;
+        }
+    }
+    if (fields && location.speedLimit) {
+        const speedLimit = document.getElementById(fields.speedLimit);
+        if (speedLimit) speedLimit.value = location.speedLimit;
+    }
+}
 
 // ==========================================
 // 1. ROLE-BASED ACCESS CONTROL (RBAC) & SIGN-IN
@@ -169,7 +261,7 @@ function applyRolePermissions(role) {
         profileSub.textContent = "Chief Municipal Engineer";
         profileSub.className = "text-[11px] text-blue-700 font-semibold truncate";
 
-        switchTab("overview");
+        switchTab("authority-citizen-reports");
     }
 
     if (window.lucide) lucide.createIcons();
@@ -217,8 +309,14 @@ function switchTab(tabId) {
         setTimeout(initRoadMap, 150);
     } else if (tabId === "citizen-map") {
         setTimeout(initCitizenMap, 150);
+    } else if (tabId === "citizen-navigate") {
+        setTimeout(initRouteNavMap, 150);
     } else if (tabId === "citizen-myreports") {
         loadCitizenReports();
+    } else if (tabId === "authority-citizen-reports") {
+        loadAuthorityCitizenReports(currentAuthorityFilter || 'pending');
+    } else if (tabId === "road-table") {
+        loadRoadConditionTable();
     } else if (tabId === "history") {
         loadInspectionHistory();
     } else if (tabId === "duplicates") {
@@ -305,12 +403,12 @@ function detectCitizenGPS() {
                 document.getElementById("citizen-coords").value = `${lat}, ${lon}`;
             },
             (err) => {
-                alert("GPS permission denied or unavailable. Using default Sector 29 coordinates.");
-                document.getElementById("citizen-coords").value = "28.4712, 77.0725";
+                alert("GPS permission denied or unavailable. Using default Belagavi City Center coordinates.");
+                document.getElementById("citizen-coords").value = "15.8497, 74.4977";
             }
         );
     } else {
-        document.getElementById("citizen-coords").value = "28.4712, 77.0725";
+        document.getElementById("citizen-coords").value = "15.8497, 74.4977";
     }
 }
 
@@ -326,28 +424,34 @@ async function submitCitizenReport() {
     btn.disabled = true;
     btn.innerHTML = `<span class="animate-spin inline-block mr-2">&#9696;</span> AI Analyzing & Generating Grievance Ticket...`;
 
-    const roadName = document.getElementById("citizen-road-name").value || "MG Road, Sector 29";
+    const selectedLocation = getSelectedInspectionLocation("citizen-road-name");
+    if (!selectedLocation) {
+        alert("Select a Belagavi location before submitting the report.");
+        btn.disabled = false;
+        btn.innerHTML = `<i data-lucide="send" class="w-4 h-4"></i><span>Submit Grievance to Authority</span>`;
+        if (window.lucide) lucide.createIcons();
+        return;
+    }
+    const roadName = selectedLocation.name;
+    const roadType = document.getElementById("citizen-road-type") ? document.getElementById("citizen-road-type").value : "Arterial";
     const speed = document.getElementById("citizen-speed").value || "60";
-    const coordsStr = document.getElementById("citizen-coords").value || "28.4712, 77.0725";
+    const coordsStr = document.getElementById("citizen-coords").value || "15.8497, 74.4977";
     const [lat, lon] = coordsStr.split(",").map(s => parseFloat(s.trim()));
-
-    const isVideo = file.type.startsWith("video/") || file.name.match(/\.(mp4|avi|mov|mkv)$/i);
-    const endpoint = isVideo ? "/api/inspect/video" : "/api/inspect/image";
 
     const formData = new FormData();
     formData.append("file", file);
     formData.append("road_name", roadName);
-    formData.append("road_type", "Arterial");
+    formData.append("location_name", roadName);
+    formData.append("road_type", roadType);
     formData.append("speed_limit", speed);
-    formData.append("weather", "Clear/Dry");
-    formData.append("traffic", "Moderate");
+    formData.append("citizen_name", currentUser.name || "Priya Sharma");
     if (!isNaN(lat) && !isNaN(lon)) {
         formData.append("manual_lat", lat);
         formData.append("manual_lon", lon);
     }
 
     try {
-        const res = await fetch(endpoint, { method: "POST", body: formData });
+        const res = await fetch("/api/citizen/report", { method: "POST", body: formData });
         const data = await res.json();
 
         if (data.status === "success") {
@@ -369,29 +473,94 @@ function displayCitizenReportResult(data, roadName) {
     const resultCard = document.getElementById("citizen-result-card");
     resultCard.classList.remove("hidden");
 
-    document.getElementById("citizen-ticket-number").textContent = `#CIT-${data.code}`;
+    document.getElementById("citizen-ticket-number").textContent = `#${data.ticket_code || data.code || "CITIZEN-REPORT"}`;
     const imgElem = document.getElementById("citizen-annotated-img");
-    imgElem.src = data.annotated_url || data.original_url || "";
+    const videoElem = document.getElementById("citizen-annotated-video");
+    const mediaUrl = data.media_type === "video"
+        ? (data.annotated_video_url || data.annotated_url)
+        : (data.annotated_url || data.original_url || "");
+    if (data.media_type === "video") {
+        imgElem.classList.add("hidden");
+        imgElem.removeAttribute("src");
+        videoElem.src = mediaUrl;
+        videoElem.classList.remove("hidden");
+        videoElem.load();
+    } else {
+        videoElem.pause();
+        videoElem.removeAttribute("src");
+        videoElem.classList.add("hidden");
+        imgElem.src = mediaUrl;
+        imgElem.classList.remove("hidden");
+    }
+
+    // Potholes count, condition %, damage count, overall health
+    const potholes = Number(data.potholes_count || 0);
+    const condPct = Number(data.condition_percentage ?? 100);
+    const totalDef = Number(data.total_defects ?? data.unique_defects_count ?? potholes);
+    const riskClass = String(data.risk_classification || "SAFE").toUpperCase();
+    const riskScore = Number(data.risk_score || 0);
+    const riskLevel = data.risk_level || "Low";
+
+    const condElem = document.getElementById("citizen-condition-pct");
+    if (condElem) condElem.textContent = `${condPct}%`;
+
+    const potElem = document.getElementById("citizen-potholes-count");
+    if (potElem) potElem.textContent = potholes;
+
+    const damElem = document.getElementById("citizen-damage-count");
+    if (damElem) damElem.textContent = totalDef;
+
+    const scoreElem = document.getElementById("citizen-risk-score");
+    if (scoreElem) scoreElem.textContent = `${riskScore.toFixed(1)} / 100`;
+    const levelElem = document.getElementById("citizen-risk-level");
+    if (levelElem) levelElem.textContent = `${riskLevel} exposure`;
+
+    const healthElem = document.getElementById("citizen-overall-health");
+    if (healthElem) {
+        if (riskClass === "SAFE") {
+            healthElem.textContent = "Safe / Sound";
+            healthElem.className = "text-sm font-bold text-emerald-600 mt-1 block";
+        } else if (riskClass === "MODERATE") {
+            healthElem.textContent = "Fair / Noticeable Damage";
+            healthElem.className = "text-sm font-bold text-amber-600 mt-1 block";
+        } else {
+            healthElem.textContent = "Poor / Severe Distress";
+            healthElem.className = "text-sm font-bold text-rose-600 mt-1 block";
+        }
+    }
+
+    const badgeElem = document.getElementById("citizen-risk-badge");
+    if (badgeElem) {
+        if (riskClass === "SAFE") {
+            badgeElem.className = "px-3 py-1 rounded-full text-xs font-black bg-emerald-100 text-emerald-800 border border-emerald-300 inline-block mt-0.5";
+            badgeElem.textContent = "SAFE (GREEN)";
+        } else if (riskClass === "MODERATE") {
+            badgeElem.className = "px-3 py-1 rounded-full text-xs font-black bg-amber-100 text-amber-800 border border-amber-300 inline-block mt-0.5";
+            badgeElem.textContent = "MODERATE (YELLOW)";
+        } else {
+            badgeElem.className = "px-3 py-1 rounded-full text-xs font-black bg-rose-100 text-rose-800 border border-rose-300 inline-block mt-0.5";
+            badgeElem.textContent = "CRITICAL / RISKY (RED)";
+        }
+    }
 
     const alertBox = document.getElementById("citizen-risk-alert-box");
     const headline = document.getElementById("citizen-risk-headline");
     const desc = document.getElementById("citizen-risk-desc");
+    const otherDefects = Math.max(0, totalDef - potholes);
+    const measuredSummary = `${potholes} pothole(s) and ${otherDefects} other defect(s) detected across ${totalDef} unique defect(s). Road condition: ${condPct}%. Risk exposure: ${riskScore.toFixed(1)}/100 (${riskLevel}).`;
 
-    const totalDef = data.total_detections || data.unique_defects || 0;
-    const score = data.risk_score || 0;
-
-    if (totalDef === 0) {
+    if (riskClass === "SAFE") {
         alertBox.className = "p-4 rounded-xl border flex items-start space-x-3 bg-emerald-50 border-emerald-200 text-emerald-900";
-        headline.textContent = "Road Condition Verified: Sound Pavement";
-        desc.textContent = "No critical pothole cavities were detected by the AI inspection engine on this image. PWD road maintenance log updated.";
-    } else if (score >= 50) {
-        alertBox.className = "p-4 rounded-xl border flex items-start space-x-3 bg-rose-50 border-rose-200 text-rose-900";
-        headline.textContent = `Caution: High Risk Road Defect Verified (Score ${score}/100)`;
-        desc.textContent = `AI detected ${totalDef} road surface defect(s) on ${roadName}. A high-priority grievance order has been queued for municipal asphalt patching.`;
-    } else {
+        headline.textContent = totalDef === 0 ? "Road Condition: Healthy — No Defects Detected" : "Road Condition: Generally Healthy — Low Damage";
+        desc.textContent = `${measuredSummary} This survey indicates a healthy road condition. The report is pending authority verification.`;
+    } else if (riskClass === "MODERATE") {
         alertBox.className = "p-4 rounded-xl border flex items-start space-x-3 bg-amber-50 border-amber-200 text-amber-900";
-        headline.textContent = `Moderate Distress Verified (Score ${score}/100)`;
-        desc.textContent = `AI identified minor/moderate distress on ${roadName}. Complaint dispatched to regular zonal maintenance.`;
+        headline.textContent = `Moderate Road Damage — ${potholes} Pothole(s)`;
+        desc.textContent = `${measuredSummary} Some maintenance may be needed. The report is pending authority verification.`;
+    } else {
+        alertBox.className = "p-4 rounded-xl border flex items-start space-x-3 bg-rose-50 border-rose-200 text-rose-900";
+        headline.textContent = `High Road Risk — ${potholes} Pothole(s) Detected`;
+        desc.textContent = `${measuredSummary} This distress level warrants prompt inspection. The report is pending authority verification.`;
     }
 
     resultCard.scrollIntoView({ behavior: "smooth" });
@@ -422,6 +591,19 @@ async function loadCitizenReports() {
         data.reports.forEach(rep => {
             const card = document.createElement("div");
             card.className = "p-5 bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition space-y-4";
+            const evidencePreview = rep.annotated_url
+                ? (rep.media_type === "video"
+                    ? `<video src="${rep.annotated_url}" controls playsinline class="w-full max-h-72 rounded-lg bg-black" aria-label="Annotated road report video"></video>`
+                    : `<img src="${rep.annotated_url}" class="w-full max-h-72 object-contain rounded-lg bg-slate-100" alt="Annotated road report" />`)
+                : "";
+
+            let statusBadge = `<span class="px-3 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-300">⏳ Pending Verification</span>`;
+            if (rep.status === "Accepted" || rep.status === "ACCEPTED" || rep.verification_status === "VERIFIED" || rep.verification_status === "ACCEPTED") {
+                statusBadge = `<span class="px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">✓ Accepted & Verified</span>`;
+            } else if (rep.status === "Rejected" || rep.status === "REJECTED" || rep.verification_status === "REJECTED") {
+                statusBadge = `<span class="px-3 py-1 rounded-full text-xs font-bold bg-rose-100 text-rose-800 border border-rose-300">✕ Rejected</span>`;
+            }
+
             card.innerHTML = `
                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-100">
                     <div>
@@ -432,22 +614,28 @@ async function loadCitizenReports() {
                         <h4 class="text-base font-bold text-slate-900 mt-1">${rep.road_name}</h4>
                     </div>
                     <div>
-                        <span class="px-3 py-1 rounded-full text-xs font-bold ${rep.status_class}">${rep.status}</span>
+                        ${statusBadge}
                     </div>
                 </div>
 
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+                ${evidencePreview}
+
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-3 text-xs">
                     <div>
-                        <span class="text-slate-500 font-bold">Observed Distress:</span>
-                        <div class="font-semibold text-slate-800 mt-0.5">${rep.defect_count} defect(s) (${rep.severity})</div>
+                        <span class="text-slate-500 font-bold block">Observed Distress:</span>
+                        <div class="font-semibold text-slate-800 mt-0.5">${rep.potholes_count || 0} pothole(s), ${Math.max(0, (rep.defect_count || 0) - (rep.potholes_count || 0))} other (${rep.severity})</div>
                     </div>
                     <div>
-                        <span class="text-slate-500 font-bold">Safety Risk Tier:</span>
-                        <div class="font-bold text-amber-700 mt-0.5">${rep.risk_score} / 100 (${rep.risk_level})</div>
+                        <span class="text-slate-500 font-bold block">Road Condition %:</span>
+                        <div class="font-black text-blue-600 mt-0.5">${rep.condition_percentage !== undefined ? rep.condition_percentage : (100 - rep.risk_score)}%</div>
                     </div>
                     <div>
-                        <span class="text-slate-500 font-bold">Action Remarks:</span>
-                        <div class="text-slate-600 mt-0.5 truncate">${rep.remarks}</div>
+                        <span class="text-slate-500 font-bold block">Risk Classification & Exposure:</span>
+                        <div class="font-bold text-amber-700 mt-0.5">${rep.risk_classification} · ${rep.risk_score}/100 (${rep.risk_level})</div>
+                    </div>
+                    <div>
+                        <span class="text-slate-500 font-bold block">Authority Action:</span>
+                        <div class="text-slate-600 mt-0.5 truncate">${rep.remarks || 'Pending municipal evaluation'}</div>
                     </div>
                 </div>
 
@@ -458,7 +646,7 @@ async function loadCitizenReports() {
                         <span>${rep.progress_pct}%</span>
                     </div>
                     <div class="w-full bg-slate-100 rounded-full h-2 overflow-hidden border border-slate-200">
-                        <div class="h-full rounded-full transition-all duration-500 ${rep.progress_pct >= 100 ? 'bg-emerald-600' : 'bg-blue-600'}" style="width: ${rep.progress_pct}%"></div>
+                        <div class="h-full rounded-full transition-all duration-500 ${rep.progress_pct >= 100 ? 'bg-emerald-600' : (rep.progress_pct <= 20 ? 'bg-amber-500' : 'bg-blue-600')}" style="width: ${rep.progress_pct}%"></div>
                     </div>
                 </div>
             `;
@@ -645,9 +833,19 @@ async function runImageInspection() {
 
     const formData = new FormData();
     formData.append("file", fileInput.files[0]);
-    formData.append("road_name", document.getElementById("img-road-name").value || "Ring Road Expressway");
+    const selectedLocation = getSelectedInspectionLocation("img-road-name");
+    if (!selectedLocation) {
+        alert("Select a Belagavi location before starting the inspection.");
+        btn.disabled = false;
+        btn.innerHTML = `<i data-lucide="zap" class="w-4 h-4"></i><span>Start AI Damage Detection</span>`;
+        if (window.lucide) lucide.createIcons();
+        return;
+    }
+    formData.append("road_name", selectedLocation.name);
     formData.append("road_type", document.getElementById("img-road-type").value || "Arterial");
     formData.append("speed_limit", document.getElementById("img-speed-limit").value || "60");
+    formData.append("manual_lat", selectedLocation.latitude);
+    formData.append("manual_lon", selectedLocation.longitude);
     formData.append("weather", document.getElementById("img-weather").value || "Clear/Dry");
     formData.append("traffic", document.getElementById("img-traffic").value || "Moderate");
     formData.append("conf_thresh", document.getElementById("img-conf-thresh").value || "0.20");
@@ -813,12 +1011,23 @@ async function runVideoInspection() {
 
     const formData = new FormData();
     formData.append("file", file);
-    formData.append("road_name", document.getElementById("vid-road-name").value || "Outer Ring Roadway");
-    formData.append("road_type", document.getElementById("vid-road-type").value || "Highway");
-    formData.append("speed_limit", document.getElementById("vid-speed-limit").value || "80");
+    const selectedLocation = getSelectedInspectionLocation("vid-road-name");
+    if (!selectedLocation) {
+        alert("Select a Belagavi location before processing the video.");
+        btn.disabled = false;
+        progressContainer.classList.add("hidden");
+        return;
+    }
+    formData.append("road_name", selectedLocation.name);
+    formData.append("road_type", document.getElementById("vid-road-type").value || "Arterial");
+    formData.append("speed_limit", document.getElementById("vid-speed-limit").value || "60");
+    formData.append("manual_lat", selectedLocation.latitude);
+    formData.append("manual_lon", selectedLocation.longitude);
     formData.append("weather", document.getElementById("vid-weather").value || "Clear/Dry");
     formData.append("conf_thresh", document.getElementById("vid-conf-thresh").value || "0.15");
     formData.append("stride", strideVal);
+    formData.append("submitter_type", "authority");
+    formData.append("submitter_name", currentUser.name || "Er. Rajesh Verma");
 
     try {
         const res = await fetch("/api/inspect/video", { method: "POST", body: formData });
@@ -849,9 +1058,37 @@ function displayVideoInspectionResults(data) {
     videoPlayer.src = data.annotated_video_url;
     videoPlayer.load();
 
-    document.getElementById("vid-total-detections").textContent = data.total_frame_detections;
-    document.getElementById("vid-unique-defects").textContent = data.unique_defects_count;
-    document.getElementById("vid-risk-score").textContent = data.risk_score;
+    const potholes = data.potholes_count !== undefined ? data.potholes_count : data.unique_defects_count;
+    const condPct = data.condition_percentage !== undefined ? data.condition_percentage : (100 - (data.risk_score || 0));
+    const riskClass = (data.risk_classification || (data.risk_score >= 50 ? "RISKY" : (data.risk_score >= 25 ? "MODERATE" : "SAFE"))).toUpperCase();
+
+    const potEl = document.getElementById("vid-potholes-count");
+    if (potEl) potEl.textContent = potholes;
+
+    const unqEl = document.getElementById("vid-unique-defects");
+    if (unqEl) unqEl.textContent = data.unique_defects_count || data.total_damage_count || potholes;
+
+    const condEl = document.getElementById("vid-condition-pct");
+    if (condEl) condEl.textContent = `${condPct}%`;
+
+    const badgeEl = document.getElementById("vid-risk-badge");
+    if (badgeEl) {
+        if (riskClass === "SAFE") {
+            badgeEl.className = "px-2 py-0.5 rounded text-xs font-black bg-emerald-100 text-emerald-800 border border-emerald-300 inline-block mt-1";
+            badgeEl.textContent = "SAFE";
+        } else if (riskClass === "MODERATE") {
+            badgeEl.className = "px-2 py-0.5 rounded text-xs font-black bg-amber-100 text-amber-800 border border-amber-300 inline-block mt-1";
+            badgeEl.textContent = "MODERATE";
+        } else {
+            badgeEl.className = "px-2 py-0.5 rounded text-xs font-black bg-rose-100 text-rose-800 border border-rose-300 inline-block mt-1";
+            badgeEl.textContent = "RISKY";
+        }
+    }
+
+    // Refresh official databases, map, table and dashboard
+    loadDashboardAnalytics();
+    loadRoadConditionTable();
+    if (roadMap) loadMapPoints();
 
     const tbody = document.getElementById("video-tracks-table-body");
     tbody.innerHTML = "";
@@ -966,7 +1203,7 @@ function downloadReport(inspId, format) {
 }
 
 // ==========================================
-// 8. DUPLICATE DAMAGE DETECTION
+// 8. DUPLICATE DAMAGE DETECTION & AUTHORITY RESOLUTION
 // ==========================================
 async function loadDuplicates() {
     const container = document.getElementById("duplicates-container");
@@ -978,11 +1215,11 @@ async function loadDuplicates() {
         const data = await res.json();
         container.innerHTML = "";
 
-        if (data.duplicates.length === 0) {
+        if (!data.duplicates || data.duplicates.length === 0) {
             container.innerHTML = `
                 <div class="glass-card p-8 text-center bg-white border border-slate-200">
-                    <div class="text-emerald-700 font-extrabold text-lg mb-1">No Duplicate Defects Pending</div>
-                    <div class="text-sm text-slate-500">All uploaded inspections correspond to unique physical coordinates.</div>
+                    <div class="text-emerald-700 font-extrabold text-lg mb-1">No Duplicate Candidates Pending Review</div>
+                    <div class="text-sm text-slate-500">All submitted inspections and physical road damage records in Belagavi are consolidated and unique.</div>
                 </div>
             `;
             return;
@@ -990,45 +1227,118 @@ async function loadDuplicates() {
 
         data.duplicates.forEach(dup => {
             const card = document.createElement("div");
-            card.className = "glass-card p-5 mb-4 border-l-4 border-amber-500 bg-white shadow-sm";
+            const isConfirmed = dup.decision_status === "Confirmed_Duplicate";
+            const isAmbiguous = dup.decision_status === "Needs_Verification";
+            const borderCol = isConfirmed ? "border-amber-500" : (isAmbiguous ? "border-cyan-500" : "border-slate-300");
+            const badgeBg = isConfirmed ? "bg-amber-100 text-amber-900 border-amber-300" : (isAmbiguous ? "bg-cyan-100 text-cyan-900 border-cyan-300" : "bg-slate-100 text-slate-800 border-slate-300");
+            const badgeText = isConfirmed ? "Confirmed Duplicate" : (isAmbiguous ? "Needs Verification (Ambiguous)" : dup.decision_status);
+
+            const candPhoto = dup.candidate?.photo_url || "/static/img/placeholder_road.jpg";
+            const existPhoto = dup.existing_damage?.photo_url || "/static/img/placeholder_road.jpg";
+
+            card.className = `glass-card p-5 mb-5 border-l-4 ${borderCol} bg-white shadow-sm rounded-xl`;
             card.innerHTML = `
-                <div class="flex justify-between items-start mb-3">
-                    <div>
-                        <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-50 text-amber-800 border border-amber-200 uppercase">Duplicate Alert</span>
-                        <h4 class="text-base font-bold text-slate-900 mt-1">Spatial Proximity: ${dup.spatial_distance_m} meters</h4>
+                <!-- Header / Status Banner -->
+                <div class="flex flex-wrap justify-between items-center gap-2 mb-4 pb-3 border-b border-slate-100">
+                    <div class="flex items-center space-x-2">
+                        <span class="px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider border ${badgeBg}">
+                            ${badgeText}
+                        </span>
+                        <span class="text-xs text-slate-500 font-bold">Match ID #${dup.match_id}</span>
                     </div>
-                    <div class="text-right">
-                        <span class="text-xs text-slate-500 font-semibold">Visual Hash Match:</span>
-                        <div class="text-lg font-black text-emerald-700">${dup.visual_similarity_pct}%</div>
-                    </div>
-                </div>
-
-                <div class="grid grid-cols-2 gap-4 bg-slate-50 p-3.5 rounded-xl mb-4 text-xs border border-slate-200">
-                    <div>
-                        <div class="text-slate-500 font-bold mb-1">New Defect Submission:</div>
-                        <div class="font-mono text-cyan-700 font-bold">${dup.new_defect.track_id} (${dup.new_defect.category})</div>
-                        <div class="text-slate-700 font-medium">Severity: ${dup.new_defect.severity}</div>
-                    </div>
-                    <div>
-                        <div class="text-slate-500 font-bold mb-1">Existing Historical Defect:</div>
-                        <div class="font-mono text-blue-700 font-bold">${dup.existing_defect.track_id} (${dup.existing_defect.category})</div>
-                        <div class="text-slate-700 font-medium">Severity: ${dup.existing_defect.severity}</div>
+                    <div class="flex items-center space-x-3 text-xs">
+                        <span class="text-slate-500 font-semibold">Overall Match Score:</span>
+                        <span class="text-lg font-black ${dup.overall_matching_score >= 0.75 ? 'text-amber-700' : 'text-cyan-700'}">
+                            ${Math.round((dup.overall_matching_score || 0) * 100)}%
+                        </span>
                     </div>
                 </div>
 
-                <div class="flex justify-end space-x-3">
-                    <button onclick="resolveDuplicateMatch(${dup.match_id}, 'Dismissed')" class="px-3 py-1.5 bg-white hover:bg-slate-50 text-xs font-bold text-slate-700 rounded-lg border border-slate-300 shadow-sm">
-                        Dismiss (Different Defects)
+                <!-- Multi-Signal Metrics Strip -->
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-slate-50 p-3 rounded-lg mb-4 text-center border border-slate-200">
+                    <div>
+                        <div class="text-[11px] font-bold text-slate-500 uppercase tracking-wider">GPS Distance</div>
+                        <div class="text-sm font-extrabold text-slate-900 mt-0.5">${dup.spatial_distance_m !== null ? dup.spatial_distance_m + ' m' : 'No GPS'}</div>
+                    </div>
+                    <div>
+                        <div class="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Perceptual Hash</div>
+                        <div class="text-sm font-extrabold text-slate-900 mt-0.5">${dup.visual_similarity_pct}%</div>
+                    </div>
+                    <div>
+                        <div class="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Deep Embedding</div>
+                        <div class="text-sm font-extrabold text-slate-900 mt-0.5">${dup.embedding_similarity_pct}%</div>
+                    </div>
+                    <div>
+                        <div class="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Category Match</div>
+                        <div class="text-sm font-extrabold ${dup.category_match ? 'text-emerald-700' : 'text-rose-700'} mt-0.5">
+                            ${dup.category_match ? 'Matching' : 'Incompatible'}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Side-by-Side Photos & Evidence Comparison -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <!-- Left: Newly Submitted Report -->
+                    <div class="border border-slate-200 rounded-lg p-3 bg-white">
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="text-xs font-black text-cyan-800 uppercase tracking-wider">New Submission</span>
+                            <span class="text-[11px] font-bold text-slate-500">${dup.candidate?.submitter_type || 'Citizen'}</span>
+                        </div>
+                        <div class="h-44 bg-slate-100 rounded-md overflow-hidden mb-2 relative flex items-center justify-center">
+                            <img src="${candPhoto}" alt="Candidate Report Photo" class="w-full h-full object-cover" onerror="this.src='/static/img/placeholder_road.jpg'" />
+                        </div>
+                        <div class="text-xs space-y-1">
+                            <div class="font-bold text-slate-800 truncate">${dup.candidate?.road_name || 'Belagavi Road'}</div>
+                            <div class="text-slate-600 flex justify-between">
+                                <span>Code: <b class="font-mono">${dup.candidate?.code || 'N/A'}</b></span>
+                                <span>Severity: <b class="text-amber-800">${dup.candidate?.severity || 'Moderate'}</b></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right: Existing Physical Damage Asset -->
+                    <div class="border border-slate-200 rounded-lg p-3 bg-white">
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="text-xs font-black text-amber-800 uppercase tracking-wider">Existing Physical Asset</span>
+                            <span class="text-[11px] font-bold text-emerald-700">Observed ${dup.existing_damage?.times_observed || 1}x</span>
+                        </div>
+                        <div class="h-44 bg-slate-100 rounded-md overflow-hidden mb-2 relative flex items-center justify-center">
+                            <img src="${existPhoto}" alt="Existing Physical Defect Photo" class="w-full h-full object-cover" onerror="this.src='/static/img/placeholder_road.jpg'" />
+                        </div>
+                        <div class="text-xs space-y-1">
+                            <div class="font-bold text-slate-800 truncate">${dup.existing_damage?.road_name || 'Corridor Asset'}</div>
+                            <div class="text-slate-600 flex justify-between">
+                                <span>Asset: <b class="font-mono text-emerald-800">${dup.existing_damage?.damage_code || 'N/A'}</b></span>
+                                <span>Type: <b>${dup.existing_damage?.damage_type || 'Pothole'}</b></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Explainable Decision Reason -->
+                <div class="bg-amber-50/70 border border-amber-200/80 rounded-lg p-3 mb-4 text-xs text-amber-950">
+                    <span class="font-bold">AI Duplicate Engine Analysis:</span>
+                    <p class="mt-0.5 leading-relaxed text-slate-700">${dup.decision_reason}</p>
+                </div>
+
+                <!-- 3 Clear Authority Actions -->
+                <div class="flex flex-wrap justify-end gap-2 pt-2 border-t border-slate-100">
+                    <button onclick="resolveDuplicateMatch(${dup.match_id}, 'REJECT_REPORT')" class="px-3.5 py-2 bg-white hover:bg-rose-50 text-xs font-bold text-rose-700 rounded-lg border border-rose-300 shadow-sm transition">
+                        Reject Report
                     </button>
-                    <button onclick="resolveDuplicateMatch(${dup.match_id}, 'Merged')" class="px-4 py-1.5 bg-amber-600 hover:bg-amber-700 text-xs font-bold text-white rounded-lg shadow-sm">
-                        Confirm & Merge Duplicate
+                    <button onclick="resolveDuplicateMatch(${dup.match_id}, 'MARK_SEPARATE')" class="px-3.5 py-2 bg-white hover:bg-slate-50 text-xs font-bold text-slate-700 rounded-lg border border-slate-300 shadow-sm transition">
+                        Mark as Separate Damage
+                    </button>
+                    <button onclick="resolveDuplicateMatch(${dup.match_id}, 'CONFIRM_DUPLICATE')" class="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-xs font-bold text-white rounded-lg shadow-sm transition">
+                        Confirm Duplicate (Link to Physical Damage)
                     </button>
                 </div>
             `;
             container.appendChild(card);
         });
     } catch (e) {
-        console.error(e);
+        console.error("Error loading duplicates:", e);
+        container.innerHTML = `<div class="p-4 bg-rose-50 text-rose-700 text-xs rounded-lg">Failed to load duplicate candidates: ${e.message}</div>`;
     }
 }
 
@@ -1036,6 +1346,7 @@ async function resolveDuplicateMatch(matchId, action) {
     try {
         const formData = new FormData();
         formData.append("action", action);
+        formData.append("reviewer", "Er. Rajesh Verma (PWD Belagavi)");
         const res = await fetch(`/api/duplicates/${matchId}/resolve`, {
             method: "POST",
             body: formData
@@ -1043,9 +1354,15 @@ async function resolveDuplicateMatch(matchId, action) {
         const data = await res.json();
         if (data.status === "success") {
             loadDuplicates();
+            // Refresh physical damage records and overview if available
+            if (typeof loadRoadConditionsTable === "function") loadRoadConditionsTable();
+            if (typeof loadDashboardAnalytics === "function") loadDashboardAnalytics();
+        } else {
+            alert(data.detail || "Failed to resolve duplicate match.");
         }
     } catch (e) {
         console.error(e);
+        alert("Network error resolving duplicate: " + e.message);
     }
 }
 
@@ -1215,4 +1532,841 @@ async function loadBenchmarkMetrics() {
     } catch (e) {
         console.error(e);
     }
+}
+
+
+// ==========================================
+// 12. BELAGAVI RISK-AWARE MULTI-PATH ROUTE NAVIGATION
+// ==========================================
+const BELAGAVI_JUNCTION_COORDS = {
+    "CHEN_CIRC": { name: "Rani Chennamma Circle (City Center)", lat: 15.8574, lon: 74.5065 },
+    "BOGARVES": { name: "Bogarves Circle", lat: 15.8540, lon: 74.5020 },
+    "SAMBHAJI": { name: "Sambhaji Chowk (RTO / College Rd)", lat: 15.8480, lon: 74.5050 },
+    "TILAKWADI_1": { name: "1st Railway Gate, Tilakwadi", lat: 15.8440, lon: 74.5010 },
+    "TILAKWADI_3": { name: "3rd Railway Gate (Khanapur Rd)", lat: 15.8360, lon: 74.4960 },
+    "RPD_CROSS": { name: "RPD College Cross", lat: 15.8320, lon: 74.4910 },
+    "UDYAMBAG": { name: "Udyambag Industrial Hub", lat: 15.8200, lon: 74.4820 },
+    "CAMP_CHURCH": { name: "Camp St. Mary's Church", lat: 15.8610, lon: 74.4980 },
+    "CIVIL_HOSP": { name: "Civil Hospital (BIMS)", lat: 15.8640, lon: 74.5120 },
+    "FORT_LAKE": { name: "Belagavi Fort Lake Junction", lat: 15.8660, lon: 74.5200 },
+    "KANBARGI_CR": { name: "Kanbargi Cross (NH-48)", lat: 15.8920, lon: 74.5420 },
+    "RAMTEERTH": { name: "Ramteerth Nagar / Auto Nagar", lat: 15.8820, lon: 74.5480 },
+    "GANDHI_NGR": { name: "Gandhi Nagar Bypass (NH-48)", lat: 15.8650, lon: 74.5530 },
+    "HALAGA_INT": { name: "Halaga Interchange (Suvarna Soudha)", lat: 15.8290, lon: 74.5580 },
+    "SHAHAPUR": { name: "Shahapur Central Market", lat: 15.8420, lon: 74.5150 },
+    "VADGAON": { name: "Vadgaon Main Junction", lat: 15.8340, lon: 74.5120 },
+    "HINDWADI": { name: "Hindwadi Goaves Cross", lat: 15.8460, lon: 74.4940 }
+};
+
+let routeNavMap = null;
+let routeNavLayerGroup = null;
+let currentRouteData = null;
+let activeRoutePolylines = {};
+let activeDefectMarkers = [];
+let clickPickMode = "origin"; // Toggles between origin and dest on map click
+
+function initRouteNavMap() {
+    if (routeNavMap) {
+        setTimeout(() => routeNavMap.invalidateSize(), 150);
+        return;
+    }
+    const container = document.getElementById("route-nav-map");
+    if (!container) return;
+
+    routeNavMap = L.map('route-nav-map', {
+        zoomControl: true,
+        attributionControl: false
+    }).setView([15.8497, 74.4977], 13);
+
+    createMapTileLayer().addTo(routeNavMap);
+    routeNavLayerGroup = L.layerGroup().addTo(routeNavMap);
+
+    // Interactive Map Click: Pick Origin or Destination directly on Belagavi map
+    routeNavMap.on("click", (e) => {
+        const clickedLat = e.latlng.lat;
+        const clickedLon = e.latlng.lng;
+
+        // Find closest junction
+        let bestKey = "CHEN_CIRC";
+        let minDist = 999999.0;
+        for (const [key, junc] of Object.entries(BELAGAVI_JUNCTION_COORDS)) {
+            const d = Math.hypot(junc.lat - clickedLat, junc.lon - clickedLon);
+            if (d < minDist) {
+                minDist = d;
+                bestKey = key;
+            }
+        }
+
+        const origSelect = document.getElementById("nav-origin-select");
+        const destSelect = document.getElementById("nav-dest-select");
+
+        if (clickPickMode === "origin") {
+            if (origSelect) origSelect.value = bestKey;
+            clickPickMode = "destination";
+            showRouteToast(`🟢 Start Origin set to: ${BELAGAVI_JUNCTION_COORDS[bestKey].name}. Now click map for Destination.`);
+        } else {
+            if (destSelect) destSelect.value = bestKey;
+            clickPickMode = "origin";
+            showRouteToast(`🏁 Destination set to: ${BELAGAVI_JUNCTION_COORDS[bestKey].name}. Calculating paths...`);
+            calculateSafeRoute();
+        }
+    });
+}
+
+function showRouteToast(msg) {
+    const pill = document.getElementById("route-active-filter-pill");
+    if (pill) {
+        pill.textContent = msg;
+        pill.className = "px-2.5 py-1 rounded font-bold text-[11px] bg-blue-50 text-blue-800 border border-blue-200 transition";
+    }
+}
+
+function setRoutePreset(origKey, destKey) {
+    const oSel = document.getElementById("nav-origin-select");
+    const dSel = document.getElementById("nav-dest-select");
+    if (oSel) oSel.value = origKey;
+    if (dSel) dSel.value = destKey;
+    calculateSafeRoute();
+}
+
+async function calculateSafeRoute() {
+    const origCode = document.getElementById("nav-origin-select").value;
+    const destCode = document.getElementById("nav-dest-select").value;
+
+    if (origCode === destCode) {
+        alert("Please select distinct Origin and Destination junctions across Belagavi.");
+        return;
+    }
+
+    const orig = BELAGAVI_JUNCTION_COORDS[origCode];
+    const dest = BELAGAVI_JUNCTION_COORDS[destCode];
+    if (!orig || !dest) return;
+
+    const btn = document.getElementById("btn-calc-route");
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = `<span class="animate-spin inline-block mr-2">&#9696;</span> Correlating Belagavi Road Damage & Generating Multiple Paths...`;
+    }
+
+    const formData = new FormData();
+    formData.append("origin_lat", orig.lat);
+    formData.append("origin_lon", orig.lon);
+    formData.append("dest_lat", dest.lat);
+    formData.append("dest_lon", dest.lon);
+
+    try {
+        const res = await fetch("/api/routes/navigate", {
+            method: "POST",
+            body: formData
+        });
+        const data = await res.json();
+
+        if (res.ok && data.status === "success") {
+            currentRouteData = data;
+            displayRouteRecommendationResults(data);
+        } else {
+            alert("Routing notice: " + (data.detail || data.message || "Failed to find road network path."));
+        }
+    } catch(e) {
+        console.error("Navigation error:", e);
+        alert("Failed to compute low-risk routes. Please try again.");
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = `<i data-lucide="navigation" class="w-4 h-4"></i><span>Calculate Low-Risk Multiple Paths</span>`;
+            if (window.lucide) lucide.createIcons();
+        }
+    }
+}
+
+function displayRouteRecommendationResults(data) {
+    const placeholder = document.getElementById("route-results-placeholder");
+    if (placeholder) placeholder.classList.add("hidden");
+
+    const container = document.getElementById("route-results-container");
+    if (container) container.classList.remove("hidden");
+
+    const recTitle = document.getElementById("route-recommendation-title");
+    const compText = document.getElementById("route-comparison-text");
+    if (recTitle) recTitle.textContent = "AI Road Damage Risk Evaluation & Route Selection";
+    if (compText) compText.textContent = data.comparison_summary || "Multi-path safety assessment completed.";
+
+    // Render Cards Grid
+    const cardsGrid = document.getElementById("routes-cards-grid");
+    if (cardsGrid) {
+        cardsGrid.innerHTML = "";
+        const routes = data.routes || [];
+
+        routes.forEach((r, idx) => {
+            const isRec = r.is_recommended || (r.route_id === 1);
+            const card = document.createElement("div");
+            card.id = `route-card-${r.route_id}`;
+            card.className = `p-4 rounded-xl border transition-all cursor-pointer shadow-sm relative overflow-hidden ${
+                isRec
+                ? 'bg-emerald-50/70 border-emerald-300 ring-2 ring-emerald-500/20 hover:border-emerald-500'
+                : 'bg-white border-slate-200 hover:border-slate-400 hover:shadow-md'
+            } space-y-3`;
+
+            // Color Indicator top stripe
+            const colorStripe = `<div class="absolute top-0 left-0 right-0 h-1.5" style="background-color: ${r.color};"></div>`;
+
+            let riskBadgeClass = "bg-emerald-100 text-emerald-800 border-emerald-300";
+            if (r.risk_level === "Critical") riskBadgeClass = "bg-rose-100 text-rose-800 border-rose-300";
+            else if (r.risk_level === "High") riskBadgeClass = "bg-orange-100 text-orange-800 border-orange-300";
+            else if (r.risk_level === "Moderate") riskBadgeClass = "bg-amber-100 text-amber-800 border-amber-300";
+
+            card.innerHTML = `
+                ${colorStripe}
+                <div class="flex items-center justify-between pt-1">
+                    <span class="text-[11px] font-extrabold uppercase flex items-center space-x-1.5" style="color: ${r.color};">
+                        <span class="w-2.5 h-2.5 rounded-full inline-block" style="background-color: ${r.color};"></span>
+                        <span>${r.summary_badge || (isRec ? '⭐ Safest Path' : 'Alternative')}</span>
+                    </span>
+                    <span class="px-2 py-0.5 rounded text-[10px] font-bold border ${riskBadgeClass}">
+                        ${r.risk_level} Risk (${r.exposure_score}/100)
+                    </span>
+                </div>
+
+                <div class="text-sm font-extrabold text-slate-900 leading-snug">${r.name}</div>
+
+                <div class="grid grid-cols-4 gap-1.5 text-center text-xs">
+                    <div class="bg-white p-2 rounded-lg border border-slate-200 shadow-2xs">
+                        <span class="text-[9px] text-slate-400 block uppercase font-bold">Distance</span>
+                        <strong class="text-slate-800 font-black">${r.distance_km} km</strong>
+                    </div>
+                    <div class="bg-white p-2 rounded-lg border border-slate-200 shadow-2xs">
+                        <span class="text-[9px] text-slate-400 block uppercase font-bold">Est. Time</span>
+                        <strong class="text-slate-800 font-black">${r.estimated_time_min} m</strong>
+                    </div>
+                    <div class="bg-white p-2 rounded-lg border border-slate-200 shadow-2xs">
+                        <span class="text-[9px] text-slate-400 block uppercase font-bold">Exposure</span>
+                        <strong class="font-black ${r.exposure_score > 30 ? 'text-rose-600' : 'text-emerald-700'}">${r.exposure_score}</strong>
+                    </div>
+                    <div class="bg-white p-2 rounded-lg border border-slate-200 shadow-2xs">
+                        <span class="text-[9px] text-slate-400 block uppercase font-bold">Potholes</span>
+                        <strong class="font-black ${r.severe_defects > 0 ? 'text-rose-600' : 'text-slate-700'}">${r.severe_defects}</strong>
+                    </div>
+                </div>
+
+                <div class="text-[11px] text-slate-600 space-y-1 pt-1 border-t border-slate-200/60 leading-tight">
+                    ${(r.factors || []).map(f => `<div class="flex items-start space-x-1.5"><span class="text-slate-400 shrink-0">&bull;</span><span>${f}</span></div>`).join('')}
+                </div>
+
+                <div class="pt-2 flex items-center justify-between">
+                    <button type="button" onclick="focusRouteOnMap(${r.route_id})" class="w-full py-1.5 text-center rounded-lg text-xs font-bold transition shadow-sm border" style="background-color: ${isRec ? r.color : '#f8fafc'}; color: ${isRec ? '#ffffff' : r.color}; border-color: ${r.color};">
+                        <span>${isRec ? 'Selected Safest Route' : 'Inspect Path on Map'}</span>
+                    </button>
+                </div>
+            `;
+
+            card.addEventListener("click", () => focusRouteOnMap(r.route_id));
+            cardsGrid.appendChild(card);
+        });
+    }
+
+    // Render Map Polylines with DISTINCT VIBRANT COLORS
+    initRouteNavMap();
+    if (routeNavMap && routeNavLayerGroup) {
+        routeNavLayerGroup.clearLayers();
+        activeRoutePolylines = {};
+        activeDefectMarkers = [];
+        const allBounds = [];
+
+        // Build dynamic route selector pills
+        const pillsContainer = document.getElementById("route-map-pills");
+        if (pillsContainer) {
+            pillsContainer.innerHTML = `<button type="button" onclick="focusRouteOnMap('all')" class="px-2 py-1 rounded text-[11px] font-bold bg-white hover:bg-slate-50 border border-slate-300 text-slate-700">All Paths</button>`;
+        }
+
+        const routes = data.routes || [];
+
+        // Render from last to first so Route 1 (Safest) is drawn on top!
+        const reverseRoutes = [...routes].reverse();
+
+        reverseRoutes.forEach(r => {
+            const isRec = r.is_recommended || (r.route_id === 1);
+            const polyline = r.polyline || [];
+            polyline.forEach(c => allBounds.push(c));
+
+            // Polyline styling with distinct color
+            const line = L.polyline(polyline, {
+                color: r.color,
+                weight: isRec ? 7 : 5,
+                opacity: isRec ? 0.95 : 0.80,
+                dashArray: null,
+                lineCap: 'round',
+                lineJoin: 'round'
+            }).addTo(routeNavLayerGroup);
+
+            // Detailed Interactive Popup
+            line.bindPopup(`
+                <div class="p-2 space-y-1.5 min-w-[200px]">
+                    <div class="flex items-center space-x-1.5 font-black text-xs" style="color: ${r.color};">
+                        <span class="w-2.5 h-2.5 rounded-full" style="background-color: ${r.color};"></span>
+                        <span>${r.name}</span>
+                    </div>
+                    <div class="text-[11px] text-slate-700">
+                        <div><strong>Distance:</strong> ${r.distance_km} km | <strong>Time:</strong> ${r.estimated_time_min} min</div>
+                        <div><strong>Road Distress Exposure:</strong> <span class="font-bold ${r.exposure_score > 30 ? 'text-rose-600' : 'text-emerald-700'}">${r.exposure_score}/100 (${r.risk_level})</span></div>
+                        <div><strong>Severe Potholes:</strong> ${r.severe_defects} cavities</div>
+                    </div>
+                    <div class="text-[10px] text-slate-500 italic pt-1 border-t border-slate-200">
+                        ${(r.factors || [])[0] || 'Belagavi Road Corridor'}
+                    </div>
+                </div>
+            `);
+
+            line.on("click", () => focusRouteOnMap(r.route_id));
+            activeRoutePolylines[r.route_id] = line;
+
+            // Add filter pill
+            if (pillsContainer) {
+                const pBtn = document.createElement("button");
+                pBtn.type = "button";
+                pBtn.className = "px-2 py-1 rounded text-[11px] font-bold border transition";
+                pBtn.style.borderColor = r.color;
+                pBtn.style.color = r.color;
+                pBtn.style.backgroundColor = isRec ? '#ecfdf5' : '#ffffff';
+                pBtn.textContent = `Route ${r.route_id} (${r.distance_km} km)`;
+                pBtn.onclick = () => focusRouteOnMap(r.route_id);
+                pillsContainer.appendChild(pBtn);
+            }
+
+            // Render Pothole and Distress Markers along this route
+            (r.matched_defects || []).forEach(d => {
+                const isSevere = (d.severity === "Severe");
+                const mColor = isSevere ? "#dc2626" : (d.severity === "Moderate" ? "#ea580c" : "#10b981");
+
+                const defMarker = L.circleMarker([d.lat, d.lon], {
+                    radius: isSevere ? 8 : 6,
+                    color: "#ffffff",
+                    weight: 2,
+                    fillColor: mColor,
+                    fillOpacity: 0.95
+                }).addTo(routeNavLayerGroup);
+
+                defMarker.bindPopup(`
+                    <div class="text-xs p-1">
+                        <strong class="${isSevere ? 'text-rose-600' : 'text-amber-700'} font-black flex items-center space-x-1">
+                            <span>⚠️ ${isSevere ? 'Severe Pothole Cavity' : 'Road Surface Defect'}</span>
+                        </strong>
+                        <div class="text-[11px] text-slate-700 mt-1">
+                            <div>Category: <strong>${d.category_code || 'D40'}</strong> &bull; Severity: <strong>${d.severity}</strong></div>
+                            <div>On: <strong>${r.name}</strong></div>
+                            <div>GPS: <span class="font-mono text-[10px]">${d.lat.toFixed(4)}, ${d.lon.toFixed(4)}</span></div>
+                        </div>
+                    </div>
+                `);
+
+                activeDefectMarkers.push(defMarker);
+            });
+        });
+
+        // Add Origin (Start) and Destination (End) Markers
+        if (data.origin) {
+            const mO = L.circleMarker([data.origin.lat, data.origin.lon], {
+                radius: 10,
+                color: '#ffffff',
+                weight: 3,
+                fillColor: '#059669',
+                fillOpacity: 1.0
+            }).addTo(routeNavLayerGroup);
+            mO.bindPopup(`<b>🟢 Start Origin (A):</b><br>${data.origin.junction}`).openPopup();
+        }
+
+        if (data.destination) {
+            const mD = L.circleMarker([data.destination.lat, data.destination.lon], {
+                radius: 10,
+                color: '#ffffff',
+                weight: 3,
+                fillColor: '#2563eb',
+                fillOpacity: 1.0
+            }).addTo(routeNavLayerGroup);
+            mD.bindPopup(`<b>🏁 Destination (B):</b><br>${data.destination.junction}`);
+        }
+
+        if (allBounds.length > 0) {
+            setTimeout(() => {
+                routeNavMap.invalidateSize();
+                routeNavMap.fitBounds(allBounds, { padding: [40, 40] });
+            }, 100);
+        }
+    }
+
+    if (window.lucide) lucide.createIcons();
+}
+
+function focusRouteOnMap(routeId) {
+    if (!currentRouteData || !routeNavMap) return;
+
+    const routes = currentRouteData.routes || [];
+    const pill = document.getElementById("route-active-filter-pill");
+
+    if (routeId === "all") {
+        routes.forEach(r => {
+            const line = activeRoutePolylines[r.route_id];
+            if (line) {
+                line.setStyle({ weight: (r.route_id === 1 ? 7 : 5), opacity: 0.85 });
+            }
+            const card = document.getElementById(`route-card-${r.route_id}`);
+            if (card) card.classList.remove("ring-4", "ring-blue-400");
+        });
+        if (pill) pill.textContent = "Showing All Paths";
+        return;
+    }
+
+    routes.forEach(r => {
+        const line = activeRoutePolylines[r.route_id];
+        const card = document.getElementById(`route-card-${r.route_id}`);
+
+        if (r.route_id === routeId) {
+            if (line) {
+                line.bringToFront();
+                line.setStyle({ weight: 9, opacity: 1.0 });
+                line.openPopup();
+                routeNavMap.fitBounds(line.getBounds(), { padding: [50, 50] });
+            }
+            if (card) card.classList.add("ring-4", "ring-blue-400");
+            if (pill) pill.textContent = `Active: ${r.name} (${r.risk_level} Risk)`;
+        } else {
+            if (line) {
+                line.setStyle({ weight: 4, opacity: 0.35 });
+            }
+            if (card) card.classList.remove("ring-4", "ring-blue-400");
+        }
+    });
+}
+// ==========================================
+// 13. MAP API KEY SETTINGS (CARTO / OPENSTREETMAP)
+// ==========================================
+function saveMapApiKey() {
+    const input = document.getElementById("setting-map-api-key");
+    const key = (input && input.value) ? input.value.trim() : "";
+    if (!key) {
+        alert("Please enter a valid CARTO or basemap API key, or click 'Use Free OSM' to use OpenStreetMap.");
+        return;
+    }
+    localStorage.setItem("roadvision_map_key", key);
+    updateMapKeyStatus();
+    alert("Map API Key saved successfully! The map tiles will now use your key.");
+    location.reload();
+}
+
+function clearMapApiKey() {
+    localStorage.removeItem("roadvision_map_key");
+    const input = document.getElementById("setting-map-api-key");
+    if (input) input.value = "";
+    updateMapKeyStatus();
+    alert("Map reset to 100% Free OpenStreetMap (No API key required).");
+    location.reload();
+}
+
+function updateMapKeyStatus() {
+    const statusEl = document.getElementById("map-key-status");
+    const input = document.getElementById("setting-map-api-key");
+    const savedKey = localStorage.getItem("roadvision_map_key") || "";
+    if (savedKey) {
+        if (input) input.value = savedKey;
+        if (statusEl) {
+            statusEl.className = "text-blue-700 font-bold text-[11px] mt-1 block";
+            statusEl.textContent = `Active: Custom Basemap Key (${savedKey.substring(0, 6)}••••)`;
+        }
+    } else {
+        if (input) input.value = "";
+        if (statusEl) {
+            statusEl.className = "text-emerald-700 font-bold text-[11px] mt-1 block";
+            statusEl.textContent = "Active: OpenStreetMap (Free, No API Key Required)";
+        }
+    }
+}
+
+
+// ==========================================
+// 4B. AUTHORITY CITIZEN REPORTS VERIFICATION (SECTION 4)
+// ==========================================
+let currentAuthorityFilter = "pending";
+
+function filterAuthorityReports(status) {
+    currentAuthorityFilter = status;
+    const btnPending = document.getElementById("auth-rep-filter-pending");
+    const btnAccepted = document.getElementById("auth-rep-filter-accepted");
+    const btnRejected = document.getElementById("auth-rep-filter-rejected");
+    const btnAll = document.getElementById("auth-rep-filter-all");
+
+    [btnPending, btnAccepted, btnRejected, btnAll].forEach(btn => {
+        if (!btn) return;
+        btn.className = "px-4 py-2 rounded-lg text-xs font-bold transition flex items-center space-x-2 bg-white text-slate-600 hover:text-slate-900 border border-slate-200";
+    });
+
+    if (status === "pending" && btnPending) {
+        btnPending.className = "px-4 py-2 rounded-lg text-xs font-bold transition flex items-center space-x-2 bg-amber-50 text-amber-800 border border-amber-300 shadow-sm";
+    } else if (status === "accepted" && btnAccepted) {
+        btnAccepted.className = "px-4 py-2 rounded-lg text-xs font-bold transition flex items-center space-x-2 bg-emerald-50 text-emerald-800 border border-emerald-300 shadow-sm";
+    } else if (status === "rejected" && btnRejected) {
+        btnRejected.className = "px-4 py-2 rounded-lg text-xs font-bold transition flex items-center space-x-2 bg-rose-50 text-rose-800 border border-rose-300 shadow-sm";
+    } else if (status === "all" && btnAll) {
+        btnAll.className = "px-4 py-2 rounded-lg text-xs font-bold transition flex items-center space-x-2 bg-blue-50 text-blue-700 border border-blue-300 shadow-sm";
+    }
+
+    loadAuthorityCitizenReports(status);
+}
+
+async function loadAuthorityCitizenReports(statusFilter = "pending") {
+    const list = document.getElementById("authority-reports-list");
+    if (!list) return;
+    list.innerHTML = `<div class="text-center py-10 text-slate-400 font-medium"><span class="animate-spin inline-block mr-2">&#9696;</span> Fetching citizen reports...</div>`;
+
+    try {
+        const res = await fetch(`/api/authority/citizen-reports?status=${statusFilter}`);
+        const data = await res.json();
+        const reports = data.reports || [];
+
+        // Update badge counts
+        const bPend = document.getElementById("badge-count-pending");
+        if (bPend && data.pending_count !== undefined) bPend.textContent = data.pending_count;
+
+        const bAcc = document.getElementById("badge-count-accepted");
+        if (bAcc && data.accepted_count !== undefined) bAcc.textContent = data.accepted_count;
+
+        const bRej = document.getElementById("badge-count-rejected");
+        if (bRej && data.rejected_count !== undefined) bRej.textContent = data.rejected_count;
+
+        const navB = document.getElementById("nav-pending-reports-badge");
+        if (navB && data.pending_count !== undefined) navB.textContent = data.pending_count;
+
+        list.innerHTML = "";
+
+        if (reports.length === 0) {
+            list.innerHTML = `
+                <div class="glass-card p-10 text-center bg-white border border-slate-200">
+                    <div class="w-12 h-12 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mx-auto mb-2">
+                        <i data-lucide="inbox" class="w-6 h-6"></i>
+                    </div>
+                    <div class="text-slate-800 font-bold text-base">No ${statusFilter} Reports Found</div>
+                    <div class="text-xs text-slate-500 mt-1">There are currently no citizen submissions matching this status.</div>
+                </div>
+            `;
+            if (window.lucide) lucide.createIcons();
+            return;
+        }
+
+        reports.forEach(rep => {
+            const card = document.createElement("div");
+            card.className = "glass-card p-6 bg-white border border-slate-200 shadow-sm rounded-2xl space-y-4";
+
+            const isPending = (rep.status === "Pending" || rep.status === "Pending Verification");
+            const isAccepted = (rep.status === "Accepted" || rep.status === "ACCEPTED");
+            const isRejected = (rep.status === "Rejected" || rep.status === "REJECTED");
+
+            let statusBadge = `<span class="px-3 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-900 border border-amber-300">⏳ Awaiting Verification</span>`;
+            if (isAccepted) {
+                statusBadge = `<span class="px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-900 border border-emerald-300">✓ Accepted & Verified</span>`;
+            } else if (isRejected) {
+                statusBadge = `<span class="px-3 py-1 rounded-full text-xs font-bold bg-rose-100 text-rose-900 border border-rose-300">✕ Rejected</span>`;
+            }
+
+            const riskClass = (rep.risk_classification || (rep.risk_score >= 50 ? "RISKY" : (rep.risk_score >= 25 ? "MODERATE" : "SAFE"))).toUpperCase();
+            let riskBadge = `<span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800">SAFE (GREEN)</span>`;
+            if (riskClass === "RISKY") {
+                riskBadge = `<span class="px-2.5 py-0.5 rounded-full text-xs font-black bg-rose-100 text-rose-800">RISKY (RED)</span>`;
+            } else if (riskClass === "MODERATE") {
+                riskBadge = `<span class="px-2.5 py-0.5 rounded-full text-xs font-black bg-amber-100 text-amber-800">MODERATE (YELLOW)</span>`;
+            }
+
+            // Media Preview: Video player if video, otherwise image
+            let mediaPreview = "";
+            if (rep.media_type === "video" || (rep.media_url && rep.media_url.match(/\.(mp4|webm|avi|mov)$/i))) {
+                const annotatedVideoUrl = rep.annotated_video_url || rep.annotated_url;
+                mediaPreview = annotatedVideoUrl
+                    ? `
+                        <div class="rounded-xl overflow-hidden bg-black aspect-video border border-slate-200 shadow-inner">
+                            <video src="${annotatedVideoUrl}" controls playsinline class="w-full h-full object-contain" aria-label="AI annotated citizen report video with bounding boxes"></video>
+                        </div>
+                        <div class="text-[11px] text-emerald-700 font-semibold">AI-annotated video — detected damage is outlined.</div>
+                    `
+                    : `<div class="p-4 rounded-lg bg-amber-50 border border-amber-200 text-xs text-amber-800">Annotated video is not available for this report.</div>`;
+            } else if (rep.annotated_url || rep.media_url) {
+                mediaPreview = `
+                    <div class="rounded-xl overflow-hidden bg-slate-100 border border-slate-200">
+                        <img src="${rep.annotated_url || rep.media_url}" class="w-full max-h-56 object-cover" alt="Defect Evidence" />
+                    </div>
+                `;
+            }
+
+            card.innerHTML = `
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-2 pb-3 border-b border-slate-100">
+                    <div>
+                        <div class="flex items-center space-x-2">
+                            <span class="font-mono text-xs font-black text-blue-700 bg-blue-50 px-2.5 py-0.5 rounded-full border border-blue-200">${rep.code}</span>
+                            <span class="text-xs text-slate-500 font-medium">${rep.upload_time || 'Recent'}</span>
+                            <span class="text-xs text-slate-600 font-semibold">&bull; Citizen: <strong>${rep.submitter_name || 'Public Motorist'}</strong></span>
+                        </div>
+                        <h3 class="text-lg font-bold text-slate-900 mt-1">${rep.road_name}</h3>
+                        <div class="text-xs text-slate-500 flex items-center space-x-3 mt-0.5">
+                            <span>Class: <strong>${rep.road_type}</strong></span>
+                            <span>Speed Limit: <strong>${rep.speed_limit} km/h</strong></span>
+                            <span>GPS: <strong class="font-mono">${rep.latitude ? `${rep.latitude.toFixed(4)}, ${rep.longitude.toFixed(4)}` : 'Belagavi'}</strong></span>
+                        </div>
+                    </div>
+                    <div>
+                        ${statusBadge}
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <!-- Left: Media Evidence Preview -->
+                    <div class="space-y-2">
+                        <div class="text-xs font-bold text-slate-700 uppercase">Uploaded Evidence</div>
+                        ${mediaPreview}
+                    </div>
+
+                    <!-- Middle: AI Inspection Results -->
+                    <div class="space-y-3">
+                        <div class="text-xs font-bold text-slate-700 uppercase">AI Inspection Analysis</div>
+                        <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
+                            <div class="flex justify-between items-center text-xs">
+                                <span class="text-slate-500 font-semibold">Detected Potholes:</span>
+                                <strong class="text-sm font-black text-rose-600">${rep.potholes_count !== undefined ? rep.potholes_count : rep.unique_defects}</strong>
+                            </div>
+                            <div class="flex justify-between items-center text-xs">
+                                <span class="text-slate-500 font-semibold">Road Condition Percentage:</span>
+                                <strong class="text-sm font-black text-blue-600">${rep.condition_percentage !== undefined ? rep.condition_percentage : (100 - rep.risk_score)}%</strong>
+                            </div>
+                            <div class="flex justify-between items-center text-xs">
+                                <span class="text-slate-500 font-semibold">Risk Classification:</span>
+                                <div>${riskBadge}</div>
+                            </div>
+                            <div class="flex justify-between items-center text-xs pt-2 border-t border-slate-200">
+                                <span class="text-slate-500 font-semibold">Risk Exposure:</span>
+                                <strong class="text-slate-800">${rep.risk_score}/100 (${rep.risk_level})</strong>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right: Verification Audit & Decision Actions -->
+                    <div class="space-y-3 flex flex-col justify-between">
+                        <div>
+                            <div class="text-xs font-bold text-slate-700 uppercase mb-2">Authority Decision</div>
+                            <p class="text-xs text-slate-600 leading-relaxed">
+                                ${isPending
+                                    ? 'Accepting verifies this report and immediately updates the official road condition database, GIS map, Multi-Route Risk Finder, and Condition Table.'
+                                    : (isAccepted
+                                        ? `Verified by <strong>${rep.verified_by || 'Authority'}</strong>. Official road condition updated.`
+                                        : `Rejected by <strong>${rep.verified_by || 'Authority'}</strong>. Preserved for audit without modifying official road database.`)}
+                            </p>
+                        </div>
+
+                        ${isPending ? `
+                            <div class="space-y-2 pt-2">
+                                <button onclick="verifyAuthorityReport(${rep.id}, 'ACCEPT')" class="w-full py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-md shadow-emerald-600/20 transition flex items-center justify-center space-x-2">
+                                    <i data-lucide="check-circle" class="w-4 h-4"></i>
+                                    <span>Accept Report & Update Official Database</span>
+                                </button>
+                                <button onclick="verifyAuthorityReport(${rep.id}, 'REJECT')" class="w-full py-2.5 px-4 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs rounded-xl border border-rose-200 transition flex items-center justify-center space-x-2">
+                                    <i data-lucide="x-circle" class="w-4 h-4"></i>
+                                    <span>Reject Report</span>
+                                </button>
+                            </div>
+                        ` : (isAccepted ? `
+                            <div class="p-3 bg-emerald-50 rounded-xl border border-emerald-200 text-emerald-900 text-xs font-semibold flex items-center space-x-2">
+                                <i data-lucide="check" class="w-4 h-4 text-emerald-600 shrink-0"></i>
+                                <span>Report Officially Verified & Integrated</span>
+                            </div>
+                        ` : `
+                            <div class="p-3 bg-rose-50 rounded-xl border border-rose-200 text-rose-900 text-xs font-semibold flex items-center space-x-2">
+                                <i data-lucide="shield-x" class="w-4 h-4 text-rose-600 shrink-0"></i>
+                                <span>Report Rejected (Audit Record Maintained)</span>
+                            </div>
+                        `)}
+                    </div>
+                </div>
+            `;
+
+            list.appendChild(card);
+        });
+
+        if (window.lucide) lucide.createIcons();
+    } catch (e) {
+        console.error("Error loading authority citizen reports:", e);
+    }
+}
+
+async function verifyAuthorityReport(reportId, action) {
+    const isAccept = (action === "ACCEPT");
+    const confirmMsg = isAccept
+        ? "Accept citizen report? This will update the official road condition database, GIS map, Multi-Route Risk Finder, and Condition Table."
+        : "Reject this report? The report will be moved to Rejected status and will NOT alter official road data.";
+
+    if (!confirm(confirmMsg)) return;
+
+    try {
+        const formData = new FormData();
+        formData.append("action", action);
+        formData.append("notes", isAccept ? "Officially accepted by Municipal Engineer" : "Rejected during manual inspection audit");
+
+        const res = await fetch(`/api/authority/reports/${reportId}/verify`, {
+            method: "POST",
+            body: formData
+        });
+        const data = await res.json();
+
+        if (data.status === "success") {
+            alert(isAccept
+                ? "Report ACCEPTED! Official road database, GIS map, and condition table updated."
+                : "Report REJECTED and moved to Rejected Reports.");
+            loadAuthorityCitizenReports(currentAuthorityFilter);
+            loadDashboardAnalytics();
+            loadRoadConditionTable();
+            if (roadMap) loadMapPoints();
+        } else {
+            alert("Verification error: " + (data.detail || "Unable to update report."));
+        }
+    } catch (e) {
+        console.error("Error verifying citizen report:", e);
+        alert("Failed to submit verification action.");
+    }
+}
+
+// ==========================================
+// 4C. ROAD CONDITION TABLE & HISTORY (SECTION 8)
+// ==========================================
+let roadTableSearchTimer = null;
+
+function debounceRoadTableSearch() {
+    clearTimeout(roadTableSearchTimer);
+    roadTableSearchTimer = setTimeout(() => {
+        loadRoadConditionTable();
+    }, 300);
+}
+
+async function loadRoadConditionTable() {
+    const tbody = document.getElementById("road-condition-table-body");
+    if (!tbody) return;
+    tbody.innerHTML = `<tr><td colspan="7" class="text-center py-8 text-slate-400">Loading road condition records...</td></tr>`;
+
+    const searchInput = document.getElementById("road-table-search");
+    const query = searchInput ? searchInput.value.trim() : "";
+
+    const riskSelect = document.getElementById("road-table-risk-filter");
+    const risk = riskSelect ? riskSelect.value : "";
+
+    try {
+        const url = `/api/roads/condition?search=${encodeURIComponent(query)}&risk_level=${encodeURIComponent(risk)}`;
+        const res = await fetch(url);
+        const data = await res.json();
+        const roads = data.roads || [];
+
+        tbody.innerHTML = "";
+
+        if (roads.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="7" class="text-center py-8 text-slate-400">No roads matching criteria.</td></tr>`;
+            return;
+        }
+
+        roads.forEach(road => {
+            const riskClass = (road.risk_classification || "SAFE").toUpperCase();
+            let riskBadge = `<span class="px-2.5 py-1 rounded-full text-xs font-black bg-emerald-100 text-emerald-800 border border-emerald-300">SAFE</span>`;
+            if (riskClass === "RISKY") {
+                riskBadge = `<span class="px-2.5 py-1 rounded-full text-xs font-black bg-rose-100 text-rose-800 border border-rose-300">RISKY</span>`;
+            } else if (riskClass === "MODERATE") {
+                riskBadge = `<span class="px-2.5 py-1 rounded-full text-xs font-black bg-amber-100 text-amber-800 border border-amber-300">MODERATE</span>`;
+            }
+
+            const condPct = road.condition_percentage;
+            let barColor = condPct >= 80 ? "bg-emerald-600" : (condPct >= 50 ? "bg-amber-500" : "bg-rose-600");
+
+            const row = document.createElement("tr");
+            row.className = "hover:bg-slate-50 transition border-b border-slate-100";
+            row.innerHTML = `
+                <td class="py-3 px-4 font-bold text-slate-900">
+                    <div>${road.name}</div>
+                    <span class="text-[10px] font-semibold text-slate-400 uppercase">${road.segment_code} &bull; ${road.road_type} (${road.speed_limit} km/h)</span>
+                </td>
+                <td class="py-3 px-4 text-slate-600 font-medium">${road.location || 'Belagavi Corridor'}</td>
+                <td class="py-3 px-4">
+                    <span class="px-2 py-0.5 rounded-full text-xs font-black ${road.potholes_count > 0 ? 'bg-rose-100 text-rose-700' : 'bg-slate-100 text-slate-600'}">
+                        ${road.potholes_count}
+                    </span>
+                </td>
+                <td class="py-3 px-4">
+                    <div class="flex items-center space-x-2">
+                        <strong class="font-black text-slate-800 text-xs w-12">${condPct}%</strong>
+                        <div class="w-24 bg-slate-200 rounded-full h-2 overflow-hidden">
+                            <div class="${barColor} h-full rounded-full" style="width: ${condPct}%;"></div>
+                        </div>
+                    </div>
+                </td>
+                <td class="py-3 px-4">${riskBadge}</td>
+                <td class="py-3 px-4 text-slate-500 text-[11px]">
+                    <div>${road.last_inspected_date || 'Recent'}</div>
+                    <span class="text-[10px] text-slate-400">${road.inspection_source}</span>
+                </td>
+                <td class="py-3 px-4 text-right">
+                    <button onclick="viewRoadHistory(${road.id}, '${road.name.replace(/'/g, "\'")}')" class="px-3 py-1 bg-white hover:bg-slate-100 text-xs font-bold text-indigo-700 rounded-lg border border-slate-300 shadow-sm">
+                        View History
+                    </button>
+                </td>
+            `;
+            tbody.appendChild(row);
+        });
+    } catch (e) {
+        console.error("Error loading road condition table:", e);
+    }
+}
+
+async function viewRoadHistory(roadId, roadName) {
+    try {
+        const res = await fetch(`/api/roads/${roadId}/history`);
+        const data = await res.json();
+
+        document.getElementById("history-modal-road-name").textContent = `Road Inspection History: ${data.road_name}`;
+        document.getElementById("history-modal-road-sub").textContent = `ID: BLG-${data.road_id} &bull; Monitored Road Corridor`;
+
+        const cur = data.current_condition || {};
+        document.getElementById("history-modal-condition").textContent = `${cur.condition_percentage || 0}%`;
+        document.getElementById("history-modal-potholes").textContent = cur.potholes_count || 0;
+        document.getElementById("history-modal-risk").textContent = cur.risk_classification || 'SAFE';
+        document.getElementById("history-modal-count").textContent = data.total_inspections || 0;
+
+        const tbody = document.getElementById("road-history-timeline-body");
+        tbody.innerHTML = "";
+
+        const history = data.history || [];
+        if (history.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="6" class="text-center py-6 text-slate-400">No inspection history recorded for this road yet.</td></tr>`;
+        } else {
+            history.forEach(h => {
+                const row = document.createElement("tr");
+                row.className = "border-b border-slate-100 text-xs hover:bg-slate-50";
+
+                let rBadge = `<span class="px-2 py-0.5 rounded font-bold text-[10px] bg-emerald-100 text-emerald-800">SAFE</span>`;
+                if (h.risk_classification === "RISKY") {
+                    rBadge = `<span class="px-2 py-0.5 rounded font-bold text-[10px] bg-rose-100 text-rose-800">RISKY</span>`;
+                } else if (h.risk_classification === "MODERATE") {
+                    rBadge = `<span class="px-2 py-0.5 rounded font-bold text-[10px] bg-amber-100 text-amber-800">MODERATE</span>`;
+                }
+
+                row.innerHTML = `
+                    <td class="py-2.5 px-3 font-medium text-slate-700">${h.inspection_date ? h.inspection_date.slice(0, 16) : 'Recent'}</td>
+                    <td class="py-2.5 px-3 font-black text-blue-600">${h.condition_percentage}%</td>
+                    <td class="py-2.5 px-3 font-bold text-rose-600">${h.potholes_count}</td>
+                    <td class="py-2.5 px-3">${rBadge}</td>
+                    <td class="py-2.5 px-3 text-slate-600">${h.inspection_source || 'Inspection'}</td>
+                    <td class="py-2.5 px-3 text-slate-500">${h.inspector_name || 'Authority'}</td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        const modal = document.getElementById("road-history-modal");
+        if (modal) modal.classList.remove("hidden");
+    } catch (e) {
+        console.error("Error viewing road history:", e);
+        alert("Failed to load road inspection history.");
+    }
+}
+
+function closeRoadHistoryModal() {
+    const modal = document.getElementById("road-history-modal");
+    if (modal) modal.classList.add("hidden");
 }

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ROADVISION AI - Intelligent Road Infrastructure Intelligence Platform</title>
+    <title>RoadGuard AI - AI-Powered Road Damage Detection, Road Health Monitoring & GIS Risk Intelligence</title>
 
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -44,10 +44,10 @@
             </div>
             <div>
                 <div class="flex items-center space-x-2">
-                    <span class="font-black text-xl tracking-tight text-slate-900">ROADVISION <span class="text-blue-600">AI</span></span>
+                    <span class="font-black text-xl tracking-tight text-slate-900">ROADGUARD <span class="text-blue-600">AI</span></span>
                     <span class="px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wider uppercase bg-blue-50 text-blue-700 border border-blue-200">RDD2022 YOLOv8</span>
                 </div>
-                <div class="text-[11px] text-slate-500 font-medium">National Road Damage Detection, Tracking & Pavement Intelligence</div>
+                <div class="text-[11px] text-slate-500 font-medium">AI-Powered Road Damage Detection, Road Health Monitoring & Multi-Route Risk Finder</div>
             </div>
         </div>
 
@@ -113,12 +113,26 @@
                         </a>
                         <a href="#citizen-map" data-tab="citizen-map" class="nav-item flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition text-slate-600 hover:text-slate-900 hover:bg-slate-100">
                             <i data-lucide="map" class="w-4 h-4 text-amber-600"></i>
-                            <span>Public Road Hazard Map</span>
+                            <span>Public Road Condition Map</span>
+                        </a>
+                        <a href="#citizen-navigate" data-tab="citizen-navigate" class="nav-item flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition text-slate-600 hover:text-slate-900 hover:bg-slate-100">
+                            <i data-lucide="navigation" class="w-4 h-4 text-emerald-600"></i>
+                            <span>Multi-Route Risk Finder</span>
+                        </a>
+                        <a href="#road-table" data-tab="road-table" class="nav-item flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition text-slate-600 hover:text-slate-900 hover:bg-slate-100">
+                            <i data-lucide="table" class="w-4 h-4 text-indigo-600"></i>
+                            <span>Road Condition Directory</span>
                         </a>
                         <a href="#citizen-guidelines" data-tab="citizen-guidelines" class="nav-item flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition text-slate-600 hover:text-slate-900 hover:bg-slate-100">
-                            <i data-lucide="help-circle" class="w-4 h-4 text-indigo-600"></i>
+                            <i data-lucide="help-circle" class="w-4 h-4 text-slate-500"></i>
                             <span>Guidelines & Helplines</span>
                         </a>
+                        <div class="pt-2 border-t border-slate-200">
+                            <a href="#overview" data-tab="overview" class="nav-item flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition text-slate-600 hover:text-slate-900 hover:bg-slate-100">
+                                <i data-lucide="layout-dashboard" class="w-4 h-4 text-blue-600"></i>
+                                <span>Overview Dashboard</span>
+                            </a>
+                        </div>
                     </nav>
                 </div>
 
@@ -129,27 +143,30 @@
                 <div id="sidebar-authority-nav" class="space-y-5">
                     <!-- Core Platform -->
                     <div>
-                        <div class="px-5 text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">Core Command Center</div>
+                        <div class="px-5 text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">Authority Command Center</div>
                         <nav class="space-y-0.5 px-3">
-                            <a href="#overview" data-tab="overview" class="nav-item flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition bg-blue-50 text-blue-700 border-l-4 border-blue-600 shadow-sm">
-                                <i data-lucide="layout-dashboard" class="w-4 h-4 text-blue-600"></i>
-                                <span>Overview Dashboard</span>
-                            </a>
-                            <a href="#inspect-image" data-tab="inspect-image" class="nav-item flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition">
-                                <i data-lucide="camera" class="w-4 h-4 text-slate-500"></i>
-                                <span>Image Inspection</span>
+                            <a href="#authority-citizen-reports" data-tab="authority-citizen-reports" class="nav-item flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-semibold transition bg-blue-50 text-blue-700 border-l-4 border-blue-600 shadow-sm">
+                                <div class="flex items-center space-x-3">
+                                    <i data-lucide="clipboard-check" class="w-4 h-4 text-blue-600"></i>
+                                    <span>Citizen Reports Verification</span>
+                                </div>
+                                <span id="nav-pending-reports-badge" class="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300">0</span>
                             </a>
                             <a href="#inspect-video" data-tab="inspect-video" class="nav-item flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition">
-                                <i data-lucide="video" class="w-4 h-4 text-slate-500"></i>
-                                <span>Video & Tracking (ByteTrack)</span>
+                                <i data-lucide="video" class="w-4 h-4 text-cyan-600"></i>
+                                <span>Video Road Inspection & Direct Update</span>
                             </a>
                             <a href="#map" data-tab="map" class="nav-item flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition">
-                                <i data-lucide="map-pin" class="w-4 h-4 text-slate-500"></i>
-                                <span>Geospatial GIS Map</span>
+                                <i data-lucide="map-pin" class="w-4 h-4 text-rose-500"></i>
+                                <span>GIS Road Condition Map</span>
                             </a>
-                            <a href="#history" data-tab="history" class="nav-item flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition">
-                                <i data-lucide="history" class="w-4 h-4 text-slate-500"></i>
-                                <span>Survey Records</span>
+                            <a href="#road-table" data-tab="road-table" class="nav-item flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition">
+                                <i data-lucide="table" class="w-4 h-4 text-indigo-600"></i>
+                                <span>Road Condition Table & History</span>
+                            </a>
+                            <a href="#citizen-navigate" data-tab="citizen-navigate" class="nav-item flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition">
+                                <i data-lucide="navigation" class="w-4 h-4 text-emerald-600"></i>
+                                <span>Multi-Route Risk Finder</span>
                             </a>
                         </nav>
                     </div>
@@ -158,6 +175,18 @@
                     <div>
                         <div class="px-5 text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">Municipal Workflows</div>
                         <nav class="space-y-0.5 px-3">
+                            <a href="#inspect-image" data-tab="inspect-image" class="nav-item flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition">
+                                <i data-lucide="camera" class="w-4 h-4 text-slate-500"></i>
+                                <span>Image Inspection</span>
+                            </a>
+                            <a href="#monitoring" data-tab="monitoring" class="nav-item flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition">
+                                <i data-lucide="trending-up" class="w-4 h-4 text-slate-500"></i>
+                                <span>Historical Progress Monitor</span>
+                            </a>
+                            <a href="#history" data-tab="history" class="nav-item flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition">
+                                <i data-lucide="history" class="w-4 h-4 text-slate-500"></i>
+                                <span>Survey Records</span>
+                            </a>
                             <a href="#duplicates" data-tab="duplicates" class="nav-item flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition">
                                 <i data-lucide="copy" class="w-4 h-4 text-slate-500"></i>
                                 <span>Duplicate Engine</span>
@@ -170,32 +199,31 @@
                                 <i data-lucide="wrench" class="w-4 h-4 text-slate-500"></i>
                                 <span>Repair Lifecycle (Kanban)</span>
                             </a>
-                            <a href="#monitoring" data-tab="monitoring" class="nav-item flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition">
-                                <i data-lucide="trending-up" class="w-4 h-4 text-slate-500"></i>
-                                <span>Progress Monitor (Before/After)</span>
-                            </a>
                             <a href="#verification" data-tab="verification" class="nav-item flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition">
                                 <i data-lucide="check-check" class="w-4 h-4 text-slate-500"></i>
                                 <span>Manual Verification</span>
-                            </a>
-                        </nav>
-                    </div>
-
-                    <!-- Audit, Reports & Model Benchmark -->
-                    <div>
-                        <div class="px-5 text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">Audit & Diagnostics</div>
-                        <nav class="space-y-0.5 px-3">
-                            <a href="#reports" data-tab="reports" class="nav-item flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition">
-                                <i data-lucide="file-text" class="w-4 h-4 text-slate-500"></i>
-                                <span>Reports Center</span>
                             </a>
                             <a href="#benchmark" data-tab="benchmark" class="nav-item flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition">
                                 <i data-lucide="award" class="w-4 h-4 text-slate-500"></i>
                                 <span>Model Benchmark</span>
                             </a>
+                            <a href="#reports" data-tab="reports" class="nav-item flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition">
+                                <i data-lucide="file-text" class="w-4 h-4 text-slate-500"></i>
+                                <span>Reports Center</span>
+                            </a>
                             <a href="#settings" data-tab="settings" class="nav-item flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition">
                                 <i data-lucide="settings" class="w-4 h-4 text-slate-500"></i>
                                 <span>System Settings</span>
+                            </a>
+                        </nav>
+                    </div>
+
+                    <!-- Overview Dashboard (LAST SECTION IN PLATFORM NAVIGATION) -->
+                    <div class="pt-2 border-t border-slate-200">
+                        <nav class="px-3">
+                            <a href="#overview" data-tab="overview" class="nav-item flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition">
+                                <i data-lucide="layout-dashboard" class="w-4 h-4 text-blue-600"></i>
+                                <span>Overview Dashboard</span>
                             </a>
                         </nav>
                     </div>
@@ -204,8 +232,8 @@
 
             <!-- Footer Badge -->
             <div class="px-5 pt-4 border-t border-slate-200 text-xs text-slate-500">
-                <div class="font-bold text-slate-800">ROADVISION AI v2.0</div>
-                <div class="text-[11px] text-slate-400">Civil & Public Infrastructure Portal</div>
+                <div class="font-bold text-slate-800">RoadGuard AI v2.0</div>
+                <div class="text-[11px] text-slate-400">Road Health Monitoring & GIS Risk Finder</div>
             </div>
         </aside>
 
@@ -223,7 +251,11 @@
                             <span>Public Citizen Reporting Portal</span>
                         </div>
                         <h1 class="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight">Report Road Distress or Pothole</h1>
-                        <p class="text-sm text-slate-600 mt-1">Upload a photo or video clip of a road defect. Our AI instantly measures damage severity, flags hazard risk, and logs an official grievance ticket for municipal repair.</p>
+                        <p class="text-sm text-slate-600 mt-1">Upload a road video or photo. Our AI identifies potholes, evaluates road condition %, and generates a comprehensive inspection report submitted to Authorities for verification.</p>
+                        <div class="mt-3 p-3 bg-amber-50 border border-amber-300 rounded-xl text-xs text-amber-900 flex items-start space-x-2">
+                            <i data-lucide="info" class="w-4 h-4 text-amber-600 shrink-0 mt-0.5"></i>
+                            <div><strong>Notice:</strong> Citizen-generated reports are marked <em>Pending Verification</em> and do NOT automatically update the official road condition database, GIS map, or Multi-Route Risk Finder until verified and accepted by municipal authorities.</div>
+                        </div>
                     </div>
                 </div>
 
@@ -252,26 +284,39 @@
                         <!-- Location & Details -->
                         <div class="space-y-4 text-xs">
                             <div>
-                                <label class="block text-slate-700 font-bold mb-1">Road Name / Exact Landmark <span class="text-rose-500">*</span></label>
-                                <input type="text" id="citizen-road-name" placeholder="e.g. MG Road, Near Metro Pillar 142" value="MG Road, Sector 29" class="w-full bg-white border border-slate-300 rounded-lg px-3 py-2.5 text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 font-medium" />
+                                <label class="block text-slate-700 font-bold mb-1">Belagavi Location / Road <span class="text-rose-500">*</span></label>
+                                <select id="citizen-road-name" disabled class="w-full bg-white border border-slate-300 rounded-lg px-3 py-2.5 text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 font-medium">
+                                    <option value="">Loading Belagavi locations...</option>
+                                </select>
                             </div>
 
-                            <div class="grid grid-cols-2 gap-3">
+                            <div class="grid grid-cols-3 gap-2.5">
                                 <div>
-                                    <label class="block text-slate-700 font-bold mb-1">Observed Hazard</label>
-                                    <select id="citizen-defect-hint" class="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500">
-                                        <option value="pothole" selected>Deep Pothole Cavity</option>
-                                        <option value="cracks">Major Surface Cracks</option>
-                                        <option value="waterlog">Waterlogged Depression</option>
-                                        <option value="edge">Broken Road Edge</option>
+                                    <label class="block text-slate-700 font-bold mb-1">Road Class</label>
+                                    <select id="citizen-road-type" class="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-xs">
+                                        <option value="Arterial" selected>Arterial</option>
+                                        <option value="Highway">Highway</option>
+                                        <option value="Local">Local City Street</option>
+                                        <option value="Residential">Residential</option>
                                     </select>
                                 </div>
                                 <div>
-                                    <label class="block text-slate-700 font-bold mb-1">Road Traffic Speed</label>
-                                    <select id="citizen-speed" class="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500">
-                                        <option value="60" selected>City Road (40-60 km/h)</option>
-                                        <option value="80">Expressway (80+ km/h)</option>
-                                        <option value="30">Colony / Society (30 km/h)</option>
+                                    <label class="block text-slate-700 font-bold mb-1">Speed Limit</label>
+                                    <select id="citizen-speed" class="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-xs">
+                                        <option value="60" selected>60 km/h (Arterial)</option>
+                                        <option value="80">80 km/h (Expressway)</option>
+                                        <option value="50">50 km/h (City Road)</option>
+                                        <option value="40">40 km/h (Local)</option>
+                                        <option value="30">30 km/h (Residential)</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-slate-700 font-bold mb-1">Hazard Type</label>
+                                    <select id="citizen-defect-hint" class="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-xs">
+                                        <option value="pothole" selected>Pothole Cavity</option>
+                                        <option value="cracks">Surface Cracks</option>
+                                        <option value="waterlog">Depression</option>
+                                        <option value="edge">Broken Edge</option>
                                     </select>
                                 </div>
                             </div>
@@ -279,7 +324,7 @@
                             <div>
                                 <label class="block text-slate-700 font-bold mb-1">GPS Coordinates (Auto-detected from photo)</label>
                                 <div class="flex items-center space-x-2">
-                                    <input type="text" id="citizen-coords" value="28.4712, 77.0725" class="w-full bg-slate-100 border border-slate-200 rounded-lg px-3 py-2 text-slate-600 font-mono text-xs" />
+                                    <input type="text" id="citizen-coords" value="15.8497, 74.4977" class="w-full bg-slate-100 border border-slate-200 rounded-lg px-3 py-2 text-slate-600 font-mono text-xs" />
                                     <button type="button" onclick="detectCitizenGPS()" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg border border-slate-300 whitespace-nowrap">
                                         Use GPS
                                     </button>
@@ -297,21 +342,48 @@
                     <div id="citizen-result-card" class="glass-card p-6 lg:col-span-2 space-y-5 hidden">
                         <div class="flex items-center justify-between pb-4 border-b border-slate-200">
                             <div>
-                                <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
-                                    Grievance Ticket Generated
+                                <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-900 border border-amber-300 flex items-center space-x-1.5 w-fit">
+                                    <span class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+                                    <span>Awaiting Authority Verification</span>
                                 </span>
                                 <h3 id="citizen-ticket-number" class="text-xl font-black text-slate-900 mt-1">#CIT-202611-042</h3>
-                                <p class="text-xs text-slate-500">Successfully submitted to Municipal Corporation of Delhi & PWD Roads Division.</p>
+                                <p class="text-xs text-slate-500">Submitted to Belagavi Municipal Authority. Pending review & verification before official DB integration.</p>
                             </div>
                             <div class="text-right">
-                                <span class="text-xs text-slate-500">Citizen Upvote Priority</span>
-                                <div class="text-lg font-black text-blue-600">High Dispatch</div>
+                                <span class="text-[11px] text-slate-500 block uppercase font-bold">Assessed Risk Tier</span>
+                                <div id="citizen-risk-badge" class="px-3 py-1 rounded-full text-xs font-black bg-rose-100 text-rose-800 border border-rose-300 inline-block mt-0.5">CRITICAL / RISKY</div>
+                            </div>
+                        </div>
+
+                        <!-- AI Road Assessment Breakdown Cards -->
+                        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 text-center text-xs">
+                            <div class="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                                <span class="text-[10px] text-slate-500 font-bold uppercase block">Road Condition</span>
+                                <strong id="citizen-condition-pct" class="text-lg font-black text-blue-600">--%</strong>
+                            </div>
+                            <div class="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                                <span class="text-[10px] text-slate-500 font-bold uppercase block">Detected Potholes</span>
+                                <strong id="citizen-potholes-count" class="text-lg font-black text-rose-600">--</strong>
+                            </div>
+                            <div class="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                                <span class="text-[10px] text-slate-500 font-bold uppercase block">Total Damage</span>
+                                <strong id="citizen-damage-count" class="text-lg font-black text-slate-800">--</strong>
+                            </div>
+                            <div class="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                                <span class="text-[10px] text-slate-500 font-bold uppercase block">Road Health</span>
+                                <strong id="citizen-overall-health" class="text-sm font-bold text-amber-600 mt-1 block">Evaluating</strong>
+                            </div>
+                            <div class="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                                <span class="text-[10px] text-slate-500 font-bold uppercase block">Risk Exposure</span>
+                                <strong id="citizen-risk-score" class="text-lg font-black text-slate-800 block">-- / 100</strong>
+                                <span id="citizen-risk-level" class="text-[10px] font-semibold text-slate-500">Evaluating</span>
                             </div>
                         </div>
 
                         <!-- Annotated Detection Output -->
                         <div class="rounded-xl overflow-hidden border border-slate-200 bg-slate-100">
                             <img id="citizen-annotated-img" class="w-full max-h-[360px] object-contain mx-auto" alt="AI Verified Pothole" />
+                            <video id="citizen-annotated-video" controls playsinline class="hidden w-full max-h-[360px] object-contain mx-auto bg-black" aria-label="AI annotated road survey video"></video>
                         </div>
 
                         <!-- Risk Alert Pill for Motorist -->
@@ -397,7 +469,200 @@
             </section>
 
             <!-- ============================================== -->
-            <!-- CITIZEN TAB 4: GUIDELINES & HELPLINE -->
+            <!-- CITIZEN TAB: RISK-AWARE ROUTE RECOMMENDATION -->
+            <!-- ============================================== -->
+            <section id="tab-citizen-navigate" class="tab-content space-y-6">
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div>
+                        <div class="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200 mb-2">
+                            <i data-lucide="navigation" class="w-3.5 h-3.5"></i>
+                            <span>Belagavi GIS Navigation Engine &bull; Multi-Path Damage Exposure</span>
+                        </div>
+                        <h1 class="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight">Risk-Aware Multi-Route Navigator</h1>
+                        <p class="text-sm text-slate-600 mt-1">Computes multiple alternate routes across Belagavi road network, correlates verified severe potholes and surface distress, and renders each path with distinct color codes.</p>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <span class="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-100 text-slate-700 border border-slate-200">
+                            <i data-lucide="map" class="w-3.5 h-3.5 mr-1.5 text-blue-600"></i>
+                            <span>Interactive Map Selection Active</span>
+                        </span>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <!-- Left: Navigation Inputs & Query -->
+                    <div class="glass-card p-6 space-y-5">
+                        <div class="flex items-center justify-between pb-2 border-b border-slate-100">
+                            <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wider flex items-center space-x-2">
+                                <i data-lucide="map-pin" class="w-4 h-4 text-blue-600"></i>
+                                <span>Journey Locations</span>
+                            </h3>
+                            <span class="text-[11px] text-slate-500 font-medium">Click map or pick list</span>
+                        </div>
+
+                        <!-- Quick Presets -->
+                        <div>
+                            <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">Quick Belagavi Corridors</label>
+                            <div class="grid grid-cols-2 gap-1.5">
+                                <button type="button" onclick="setRoutePreset('CHEN_CIRC', 'UDYAMBAG')" class="px-2.5 py-1.5 text-left text-xs bg-slate-50 hover:bg-blue-50 hover:text-blue-700 rounded-lg border border-slate-200 transition font-medium truncate">
+                                    Chennamma &rarr; Udyambag
+                                </button>
+                                <button type="button" onclick="setRoutePreset('BOGARVES', 'RPD_CROSS')" class="px-2.5 py-1.5 text-left text-xs bg-slate-50 hover:bg-blue-50 hover:text-blue-700 rounded-lg border border-slate-200 transition font-medium truncate">
+                                    Bogarves &rarr; RPD Cross
+                                </button>
+                                <button type="button" onclick="setRoutePreset('KANBARGI_CR', 'HALAGA_INT')" class="px-2.5 py-1.5 text-left text-xs bg-slate-50 hover:bg-blue-50 hover:text-blue-700 rounded-lg border border-slate-200 transition font-medium truncate">
+                                    Kanbargi &rarr; Halaga (NH)
+                                </button>
+                                <button type="button" onclick="setRoutePreset('CAMP_CHURCH', 'SHAHAPUR')" class="px-2.5 py-1.5 text-left text-xs bg-slate-50 hover:bg-blue-50 hover:text-blue-700 rounded-lg border border-slate-200 transition font-medium truncate">
+                                    Camp &rarr; Shahapur Market
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 uppercase mb-1 flex items-center justify-between">
+                                    <span>Origin Point (Start)</span>
+                                    <span class="text-[10px] text-emerald-700 font-bold bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">Start (A)</span>
+                                </label>
+                                <select id="nav-origin-select" class="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-900 font-medium shadow-sm">
+                                    <option value="CHEN_CIRC" selected>Rani Chennamma Circle (City Center)</option>
+                                    <option value="BOGARVES">Bogarves Circle</option>
+                                    <option value="SAMBHAJI">Sambhaji Chowk (RTO / College Rd)</option>
+                                    <option value="TILAKWADI_1">1st Railway Gate, Tilakwadi</option>
+                                    <option value="TILAKWADI_3">3rd Railway Gate (Khanapur Rd)</option>
+                                    <option value="RPD_CROSS">RPD College Cross</option>
+                                    <option value="UDYAMBAG">Udyambag Industrial Hub</option>
+                                    <option value="CAMP_CHURCH">Camp St. Mary's Church</option>
+                                    <option value="CIVIL_HOSP">Civil Hospital (BIMS)</option>
+                                    <option value="FORT_LAKE">Belagavi Fort Lake Junction</option>
+                                    <option value="KANBARGI_CR">Kanbargi Cross (NH-48)</option>
+                                    <option value="RAMTEERTH">Ramteerth Nagar / Auto Nagar</option>
+                                    <option value="GANDHI_NGR">Gandhi Nagar Bypass (NH-48)</option>
+                                    <option value="HALAGA_INT">Halaga Interchange (Suvarna Soudha)</option>
+                                    <option value="SHAHAPUR">Shahapur Central Market</option>
+                                    <option value="VADGAON">Vadgaon Main Junction</option>
+                                    <option value="HINDWADI">Hindwadi Goaves Cross</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 uppercase mb-1 flex items-center justify-between">
+                                    <span>Destination Point (End)</span>
+                                    <span class="text-[10px] text-blue-700 font-bold bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200">End (B)</span>
+                                </label>
+                                <select id="nav-dest-select" class="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-900 font-medium shadow-sm">
+                                    <option value="UDYAMBAG" selected>Udyambag Industrial Hub</option>
+                                    <option value="CHEN_CIRC">Rani Chennamma Circle (City Center)</option>
+                                    <option value="BOGARVES">Bogarves Circle</option>
+                                    <option value="SAMBHAJI">Sambhaji Chowk (RTO)</option>
+                                    <option value="TILAKWADI_1">1st Railway Gate, Tilakwadi</option>
+                                    <option value="TILAKWADI_3">3rd Railway Gate (Khanapur Rd)</option>
+                                    <option value="RPD_CROSS">RPD College Cross</option>
+                                    <option value="CAMP_CHURCH">Camp St. Mary's Church</option>
+                                    <option value="CIVIL_HOSP">Civil Hospital (BIMS)</option>
+                                    <option value="FORT_LAKE">Belagavi Fort Lake Junction</option>
+                                    <option value="KANBARGI_CR">Kanbargi Cross (NH-48)</option>
+                                    <option value="RAMTEERTH">Ramteerth Nagar / Auto Nagar</option>
+                                    <option value="GANDHI_NGR">Gandhi Nagar Bypass (NH-48)</option>
+                                    <option value="HALAGA_INT">Halaga Interchange (Suvarna Soudha)</option>
+                                    <option value="SHAHAPUR">Shahapur Central Market</option>
+                                    <option value="VADGAON">Vadgaon Main Junction</option>
+                                    <option value="HINDWADI">Hindwadi Goaves Cross</option>
+                                </select>
+                            </div>
+
+                            <button id="btn-calc-route" onclick="calculateSafeRoute()" class="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm rounded-xl shadow-md shadow-blue-600/20 transition flex items-center justify-center space-x-2">
+                                <i data-lucide="navigation" class="w-4 h-4"></i>
+                                <span>Calculate Low-Risk Multiple Paths</span>
+                            </button>
+                        </div>
+
+                        <!-- Routing Edge-Cases & Color Legend -->
+                        <div class="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-2 text-xs text-slate-600">
+                            <div class="font-bold text-slate-800 flex items-center space-x-1.5">
+                                <i data-lucide="palette" class="w-3.5 h-3.5 text-blue-600"></i>
+                                <span>Path Color Legend on Map:</span>
+                            </div>
+                            <div class="space-y-1.5 pt-1">
+                                <div class="flex items-center space-x-2">
+                                    <span class="w-3.5 h-3.5 rounded-full bg-emerald-600 inline-block shrink-0 shadow-sm"></span>
+                                    <span><strong>Route 1 (Emerald):</strong> Lowest Damage Exposure (Safest)</span>
+                                </div>
+                                <div class="flex items-center space-x-2">
+                                    <span class="w-3.5 h-3.5 rounded-full bg-blue-600 inline-block shrink-0 shadow-sm"></span>
+                                    <span><strong>Route 2 (Blue):</strong> Alternate Corridor A</span>
+                                </div>
+                                <div class="flex items-center space-x-2">
+                                    <span class="w-3.5 h-3.5 rounded-full bg-amber-600 inline-block shrink-0 shadow-sm"></span>
+                                    <span><strong>Route 3 (Amber):</strong> Alternate Corridor B</span>
+                                </div>
+                                <div class="flex items-center space-x-2 pt-1 border-t border-slate-200/60">
+                                    <span class="w-3 h-3 rounded-full bg-rose-600 inline-block shrink-0 animate-ping"></span>
+                                    <span class="text-rose-700 font-bold">Pothole Hazard Pin: Verified Cavity</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right: Route Alternatives & Safety Tradeoff Results -->
+                    <div class="glass-card p-6 lg:col-span-2 space-y-5">
+                        <div id="route-results-placeholder" class="text-center py-16 text-slate-500">
+                            <i data-lucide="compass" class="w-12 h-12 mx-auto text-slate-300 mb-3 animate-spin" style="animation-duration: 10s;"></i>
+                            <div class="font-bold text-slate-700 text-sm">Select Origin & Destination to Calculate Safest Routes</div>
+                            <div class="text-xs text-slate-400 mt-1">AI correlates verified physical damage records with Belagavi road network corridors</div>
+                            <div class="mt-4 inline-flex items-center space-x-2 px-3 py-1.5 rounded-lg bg-blue-50 text-blue-700 text-xs font-semibold">
+                                <i data-lucide="mouse-pointer" class="w-3.5 h-3.5"></i>
+                                <span>Tip: Click on map below to set Start and End points directly</span>
+                            </div>
+                        </div>
+
+                        <div id="route-results-container" class="space-y-5 hidden">
+                            <!-- Comparison Banner -->
+                            <div id="route-comparison-banner" class="p-4 rounded-xl border flex items-start space-x-3 bg-emerald-50 border-emerald-200 text-emerald-950">
+                                <i data-lucide="shield-check" class="w-5 h-5 text-emerald-600 shrink-0 mt-0.5"></i>
+                                <div>
+                                    <div class="font-extrabold text-sm" id="route-recommendation-title">Recommended Low-Risk Path</div>
+                                    <div class="text-xs text-slate-700 mt-1" id="route-comparison-text"></div>
+                                </div>
+                            </div>
+
+                            <!-- Route Comparison Cards (3 Columns) -->
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-3" id="routes-cards-grid">
+                                <!-- Populated dynamically by JS -->
+                            </div>
+
+                            <!-- Map Rendering of Selected Corridors with Controls -->
+                            <div class="rounded-xl overflow-hidden border border-slate-200 shadow-sm relative">
+                                <div class="bg-slate-100 px-4 py-2.5 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2 text-xs">
+                                    <div class="flex items-center space-x-3">
+                                        <span class="font-bold text-slate-700 flex items-center space-x-1">
+                                            <i data-lucide="layers" class="w-3.5 h-3.5 text-blue-600"></i>
+                                            <span>Multi-Path Belagavi Map View</span>
+                                        </span>
+                                        <span id="route-active-filter-pill" class="px-2 py-0.5 rounded font-bold text-[10px] bg-white border border-slate-200 text-slate-600">
+                                            Showing All Paths
+                                        </span>
+                                    </div>
+                                    <div class="flex items-center space-x-2" id="route-map-pills">
+                                        <!-- Dynamic route selector pills -->
+                                    </div>
+                                </div>
+                                <div id="route-nav-map" class="w-full h-[400px] rounded-b-xl z-10"></div>
+                            </div>
+
+                            <!-- Official Guidance Disclaimer -->
+                            <div class="text-[11px] text-slate-500 italic flex items-center space-x-1.5">
+                                <i data-lucide="alert-circle" class="w-3.5 h-3.5 text-slate-400"></i>
+                                <span>Road-damage-aware navigation guidance. Weather, construction, or recent unverified potholes may affect driving conditions. Drive safely.</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ============================================== -->
+            <!-- CITIZEN TAB: GUIDELINES & HELPLINE -->
             <!-- ============================================== -->
             <section id="tab-citizen-guidelines" class="tab-content space-y-6">
                 <div>
@@ -440,117 +705,123 @@
                 </div>
             </section>
 
+
+
             <!-- ============================================== -->
-            <!-- AUTHORITY TAB 1: OVERVIEW DASHBOARD -->
+
             <!-- ============================================== -->
-            <section id="tab-overview" class="tab-content active space-y-6">
+            <!-- AUTHORITY TAB 1: CITIZEN REPORTS VERIFICATION -->
+            <!-- ============================================== -->
+            <section id="tab-authority-citizen-reports" class="tab-content active space-y-6">
                 <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div>
-                        <div class="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200 mb-2">
-                            <i data-lucide="shield" class="w-3.5 h-3.5"></i>
-                            <span>Civil Infrastructure Command Center &bull; Full Access</span>
+                        <div class="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-800 border border-amber-300 mb-2">
+                            <i data-lucide="shield-alert" class="w-3.5 h-3.5 text-amber-600"></i>
+                            <span>Municipal Authority Verification Desk &bull; Section 4 Workflow</span>
                         </div>
-                        <h1 class="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight">Executive Road Infrastructure Dashboard</h1>
-                        <p class="text-sm text-slate-600 mt-1">Real-time road surface defect intelligence, persistent tracking, and predictive maintenance metrics.</p>
+                        <h1 class="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight">Citizen Road Reports & Verification</h1>
+                        <p class="text-sm text-slate-600 mt-1">Review citizen-submitted road distress grievances with AI video analysis. Accepting a report updates the official road condition database, GIS map, and Multi-Route Risk Finder. Rejecting preserves the report for audit without updating official road data.</p>
                     </div>
-                    <div class="flex items-center space-x-3">
-                        <button onclick="switchTab('inspect-image')" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm rounded-lg shadow-sm transition flex items-center space-x-2">
-                            <i data-lucide="plus" class="w-4 h-4"></i>
-                            <span>New Survey Inspection</span>
+                    <div class="flex items-center space-x-2">
+                        <button onclick="loadAuthorityCitizenReports('pending')" class="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-lg shadow-sm flex items-center space-x-1.5">
+                            <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+                            <span>Refresh Reports</span>
                         </button>
                     </div>
                 </div>
 
-                <!-- KPI Metric Grid -->
-                <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
-                    <div class="glass-card p-4">
-                        <div class="text-xs font-bold text-slate-500 uppercase tracking-wide">Total Surveys</div>
-                        <div id="kpi-total-inspections" class="text-2xl font-black text-slate-900 mt-1">--</div>
-                        <div class="text-[11px] text-slate-500 mt-0.5">Surveys completed</div>
+                <!-- Status Filter Tabs -->
+                <div class="flex flex-wrap items-center gap-2 border-b border-slate-200 pb-3">
+                    <button id="auth-rep-filter-pending" onclick="filterAuthorityReports('pending')" class="px-4 py-2 rounded-lg text-xs font-bold transition flex items-center space-x-2 bg-amber-50 text-amber-800 border border-amber-300 shadow-sm">
+                        <i data-lucide="clock" class="w-3.5 h-3.5"></i>
+                        <span>Pending Verification</span>
+                        <span id="badge-count-pending" class="px-1.5 py-0.5 rounded-full text-[10px] bg-amber-200 text-amber-900 font-extrabold">0</span>
+                    </button>
+                    <button id="auth-rep-filter-accepted" onclick="filterAuthorityReports('accepted')" class="px-4 py-2 rounded-lg text-xs font-bold transition flex items-center space-x-2 bg-white text-slate-600 hover:text-slate-900 border border-slate-200">
+                        <i data-lucide="check-circle" class="w-3.5 h-3.5 text-emerald-600"></i>
+                        <span>Accepted & Verified</span>
+                        <span id="badge-count-accepted" class="px-1.5 py-0.5 rounded-full text-[10px] bg-emerald-100 text-emerald-800 font-extrabold">0</span>
+                    </button>
+                    <button id="auth-rep-filter-rejected" onclick="filterAuthorityReports('rejected')" class="px-4 py-2 rounded-lg text-xs font-bold transition flex items-center space-x-2 bg-white text-slate-600 hover:text-slate-900 border border-slate-200">
+                        <i data-lucide="x-circle" class="w-3.5 h-3.5 text-rose-600"></i>
+                        <span>Rejected Reports</span>
+                        <span id="badge-count-rejected" class="px-1.5 py-0.5 rounded-full text-[10px] bg-rose-100 text-rose-800 font-extrabold">0</span>
+                    </button>
+                    <button id="auth-rep-filter-all" onclick="filterAuthorityReports('all')" class="px-4 py-2 rounded-lg text-xs font-bold transition flex items-center space-x-2 bg-white text-slate-600 hover:text-slate-900 border border-slate-200">
+                        <i data-lucide="list" class="w-3.5 h-3.5 text-slate-500"></i>
+                        <span>All Reports</span>
+                    </button>
+                </div>
+
+                <!-- Reports Cards Container -->
+                <div id="authority-reports-list" class="space-y-4">
+                    <div class="text-center py-12 text-slate-400">Loading citizen reports for verification...</div>
+                </div>
+            </section>
+
+            <!-- ============================================== -->
+            <!-- AUTHORITY TAB: ROAD CONDITION TABLE & HISTORY -->
+            <!-- ============================================== -->
+            <section id="tab-road-table" class="tab-content space-y-6">
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div>
+                        <div class="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-200 mb-2">
+                            <i data-lucide="table" class="w-3.5 h-3.5 text-indigo-600"></i>
+                            <span>Official Database &bull; Belagavi Road Network (Section 8)</span>
+                        </div>
+                        <h1 class="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight">Belagavi Road Condition Register</h1>
+                        <p class="text-sm text-slate-600 mt-1">Structured condition monitoring table reflecting official verified road records, detected potholes, road health percentages, and risk classifications.</p>
                     </div>
-                    <div class="glass-card p-4">
-                        <div class="text-xs font-bold text-slate-500 uppercase tracking-wide">Total Defects</div>
-                        <div id="kpi-total-defects" class="text-2xl font-black text-blue-600 mt-1">--</div>
-                        <div class="text-[11px] text-slate-500 mt-0.5">Detections cataloged</div>
-                    </div>
-                    <div class="glass-card p-4">
-                        <div class="text-xs font-bold text-slate-500 uppercase tracking-wide">Unique Potholes</div>
-                        <div id="kpi-unique-potholes" class="text-2xl font-black text-rose-600 mt-1">--</div>
-                        <div class="text-[11px] text-slate-500 mt-0.5">D40 distinct cavities</div>
-                    </div>
-                    <div class="glass-card p-4">
-                        <div class="text-xs font-bold text-slate-500 uppercase tracking-wide">Severe Damage</div>
-                        <div id="kpi-severe-damage" class="text-2xl font-black text-rose-700 mt-1">--</div>
-                        <div class="text-[11px] text-slate-500 mt-0.5">High hazard depth</div>
-                    </div>
-                    <div class="glass-card p-4">
-                        <div class="text-xs font-bold text-slate-500 uppercase tracking-wide">Critical Corridors</div>
-                        <div id="kpi-critical-locations" class="text-2xl font-black text-amber-600 mt-1">--</div>
-                        <div class="text-[11px] text-slate-500 mt-0.5">Risk score &gt; 75/100</div>
-                    </div>
-                    <div class="glass-card p-4">
-                        <div class="text-xs font-bold text-slate-500 uppercase tracking-wide">Active Repairs</div>
-                        <div id="kpi-repairs-active" class="text-2xl font-black text-cyan-600 mt-1">--</div>
-                        <div class="text-[11px] text-slate-500 mt-0.5">Dispatched crews</div>
-                    </div>
-                    <div class="glass-card p-4">
-                        <div class="text-xs font-bold text-slate-500 uppercase tracking-wide">Verified Repairs</div>
-                        <div id="kpi-repairs-verified" class="text-2xl font-black text-emerald-600 mt-1">--</div>
-                        <div class="text-[11px] text-slate-500 mt-0.5">Audit complete</div>
+                    <div class="flex items-center space-x-3">
+                        <button onclick="loadRoadConditionTable()" class="px-3.5 py-2 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs rounded-lg border border-slate-300 shadow-sm flex items-center space-x-1.5">
+                            <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+                            <span>Refresh Table</span>
+                        </button>
                     </div>
                 </div>
 
-                <!-- Charts Section -->
-                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    <div class="glass-card p-6 lg:col-span-1">
-                        <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wider mb-4 flex items-center justify-between">
-                            <span>RDD2022 Defect Categories</span>
-                            <span class="text-xs font-semibold text-slate-400 font-mono">D00 / D10 / D20 / D40</span>
-                        </h3>
-                        <div class="h-64 relative">
-                            <canvas id="chart-categories"></canvas>
-                        </div>
+                <!-- Table Controls: Search & Risk Filter -->
+                <div class="glass-card p-4 flex flex-col md:flex-row items-center justify-between gap-4">
+                    <div class="w-full md:w-96 relative">
+                        <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-3"></i>
+                        <input type="text" id="road-table-search" oninput="debounceRoadTableSearch()" placeholder="Search road by name or location..." class="w-full pl-9 pr-4 py-2 bg-white border border-slate-300 rounded-lg text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium" />
                     </div>
-
-                    <div class="glass-card p-6 lg:col-span-2">
-                        <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wider mb-4 flex items-center justify-between">
-                            <span>Damage Severity Distribution</span>
-                            <span class="text-xs font-semibold text-slate-500">Minor vs Moderate vs Severe</span>
-                        </h3>
-                        <div class="h-64 relative">
-                            <canvas id="chart-severities"></canvas>
-                        </div>
+                    <div class="flex items-center space-x-3 w-full md:w-auto">
+                        <label class="text-xs font-bold text-slate-600 shrink-0">Risk Filter:</label>
+                        <select id="road-table-risk-filter" onchange="loadRoadConditionTable()" class="bg-white border border-slate-300 rounded-lg px-3 py-2 text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            <option value="">All Risk Levels</option>
+                            <option value="Risky">Risky / Critical (Red)</option>
+                            <option value="Moderate">Moderate (Yellow)</option>
+                            <option value="Safe">Safe (Green)</option>
+                        </select>
                     </div>
                 </div>
 
-                <!-- Recent Inspections Table -->
+                <!-- Table -->
                 <div class="glass-card p-6">
-                    <div class="flex items-center justify-between mb-4">
-                        <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wider">Recent Road Condition Surveys</h3>
-                        <button onclick="switchTab('history')" class="text-xs font-bold text-blue-600 hover:text-blue-700">View All Records &rarr;</button>
-                    </div>
                     <div class="overflow-x-auto">
                         <table class="w-full text-left border-collapse">
                             <thead>
                                 <tr class="text-[11px] font-bold text-slate-500 uppercase border-b border-slate-200 bg-slate-50">
-                                    <th class="py-3 px-4">Inspection Code</th>
-                                    <th class="py-3 px-4">Road Name / Location</th>
-                                    <th class="py-3 px-4">Media</th>
-                                    <th class="py-3 px-4">Defects</th>
+                                    <th class="py-3 px-4">Road Name</th>
+                                    <th class="py-3 px-4">Location</th>
+                                    <th class="py-3 px-4">Potholes</th>
+                                    <th class="py-3 px-4">Road Condition (%)</th>
                                     <th class="py-3 px-4">Risk Level</th>
+                                    <th class="py-3 px-4">Last Inspected</th>
                                     <th class="py-3 px-4 text-right">Actions</th>
                                 </tr>
                             </thead>
-                            <tbody id="recent-surveys-body" class="divide-y divide-slate-100">
-                                <tr><td colspan="6" class="text-center py-6 text-slate-400 font-medium">Loading survey records...</td></tr>
+                            <tbody id="road-condition-table-body" class="divide-y divide-slate-100 text-xs">
+                                <tr><td colspan="7" class="text-center py-8 text-slate-400">Loading road condition records...</td></tr>
                             </tbody>
                         </table>
                     </div>
                 </div>
             </section>
 
-            <!-- ============================================== -->
-            <!-- AUTHORITY TAB 2: IMAGE INSPECTION -->
+
+<!-- AUTHORITY TAB 2: IMAGE INSPECTION -->
             <!-- ============================================== -->
             <section id="tab-inspect-image" class="tab-content space-y-6">
                 <div>
@@ -575,8 +846,10 @@
                         <!-- Metadata Fields -->
                         <div class="space-y-3 text-xs">
                             <div>
-                                <label class="block text-slate-700 font-bold mb-1">Road Name / Corridor</label>
-                                <input type="text" id="img-road-name" value="Ring Road Expressway" class="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                                <label class="block text-slate-700 font-bold mb-1">Belagavi Location / Road</label>
+                                <select id="img-road-name" disabled class="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                    <option value="">Loading Belagavi locations...</option>
+                                </select>
                             </div>
 
                             <div class="grid grid-cols-2 gap-3">
@@ -732,8 +1005,10 @@
 
                         <div class="space-y-3 text-xs">
                             <div>
-                                <label class="block text-slate-700 font-bold mb-1">Road Name</label>
-                                <input type="text" id="vid-road-name" value="Outer Ring Roadway" class="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-slate-900 focus:outline-none" />
+                                <label class="block text-slate-700 font-bold mb-1">Belagavi Location / Road</label>
+                                <select id="vid-road-name" disabled class="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-slate-900 focus:outline-none">
+                                    <option value="">Loading Belagavi locations...</option>
+                                </select>
                             </div>
                             <div class="grid grid-cols-2 gap-3">
                                 <div>
@@ -791,18 +1066,39 @@
                     </div>
 
                     <div id="video-results-panel" class="glass-card p-6 lg:col-span-2 space-y-5 hidden">
-                        <div class="grid grid-cols-3 gap-3 text-center">
-                            <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-200">
-                                <div class="text-xs text-slate-500 font-semibold">Frame Detections</div>
-                                <div id="vid-total-detections" class="text-xl font-black text-slate-900">--</div>
+                        <!-- Official Authority Verification Banner -->
+                        <div id="vid-official-banner" class="p-3.5 bg-emerald-50 border border-emerald-300 rounded-xl text-emerald-950 text-xs font-medium flex items-center justify-between">
+                            <div class="flex items-center space-x-2">
+                                <i data-lucide="check-circle" class="w-4 h-4 text-emerald-600 shrink-0"></i>
+                                <span><strong>Official Inspection Saved:</strong> Verified road condition recorded in database. GIS Map, Multi-Route Risk Finder, and Condition Table have been updated.</span>
                             </div>
-                            <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-200">
-                                <div class="text-xs text-slate-500 font-semibold">Unique Defects Tracked</div>
-                                <div id="vid-unique-defects" class="text-xl font-black text-cyan-600">--</div>
+                            <button onclick="switchTab('road-table')" class="font-bold text-emerald-800 underline hover:text-emerald-900 whitespace-nowrap ml-2">View in Table &rarr;</button>
+                        </div>
+
+                        <!-- 5-Metric Breakdown Cards -->
+                        <div class="grid grid-cols-2 md:grid-cols-5 gap-3 text-center">
+                            <div class="bg-slate-50 p-3 rounded-xl border border-slate-200">
+                                <span class="text-[10px] text-slate-500 font-bold uppercase block">Detected Potholes</span>
+                                <div id="vid-potholes-count" class="text-xl font-black text-rose-600 mt-0.5">--</div>
                             </div>
-                            <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-200">
-                                <div class="text-xs text-slate-500 font-semibold">Road Risk Score</div>
-                                <div id="vid-risk-score" class="text-xl font-black text-amber-600">--</div>
+                            <div class="bg-slate-50 p-3 rounded-xl border border-slate-200">
+                                <span class="text-[10px] text-slate-500 font-bold uppercase block">Total Damage</span>
+                                <div id="vid-unique-defects" class="text-xl font-black text-slate-800 mt-0.5">--</div>
+                            </div>
+                            <div class="bg-slate-50 p-3 rounded-xl border border-slate-200">
+                                <span class="text-[10px] text-slate-500 font-bold uppercase block">Road Condition %</span>
+                                <div id="vid-condition-pct" class="text-xl font-black text-blue-600 mt-0.5">--%</div>
+                            </div>
+                            <div class="bg-slate-50 p-3 rounded-xl border border-slate-200">
+                                <span class="text-[10px] text-slate-500 font-bold uppercase block">Risk Level</span>
+                                <div id="vid-risk-badge" class="px-2 py-0.5 rounded text-xs font-black bg-rose-100 text-rose-800 border border-rose-300 inline-block mt-1">RISKY</div>
+                            </div>
+                            <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 col-span-2 md:col-span-1">
+                                <span class="text-[10px] text-slate-500 font-bold uppercase block">Verification</span>
+                                <div class="text-xs font-bold text-emerald-700 mt-1.5 flex items-center justify-center space-x-1">
+                                    <i data-lucide="shield-check" class="w-3.5 h-3.5"></i>
+                                    <span>Official Update</span>
+                                </div>
                             </div>
                         </div>
 
@@ -842,17 +1138,25 @@
                         <h1 class="text-2xl font-extrabold text-slate-900">Geospatial Road Damage Intelligence</h1>
                         <p class="text-sm text-slate-600 mt-1">Interactive GIS road mapping. Pinpoints defect locations, clusters, severity categories, and maintenance urgency.</p>
                     </div>
-                    <!-- Preset Fly-To Corridors -->
-                    <div class="flex items-center space-x-2 text-xs">
-                        <span class="text-slate-500 font-bold">Presets:</span>
-                        <button onclick="flyToCorridor(28.4595, 77.0266, 14)" class="px-2.5 py-1 bg-white hover:bg-slate-50 text-blue-700 rounded-lg border border-slate-300 font-bold shadow-sm">
-                            NH-48 Corridor
-                        </button>
-                        <button onclick="flyToCorridor(28.5672, 77.2435, 14)" class="px-2.5 py-1 bg-white hover:bg-slate-50 text-amber-700 rounded-lg border border-slate-300 font-bold shadow-sm">
-                            Ring Road Flyover
-                        </button>
-                        <button onclick="flyToCorridor(28.5355, 77.1500, 11)" class="px-2.5 py-1 bg-white hover:bg-slate-50 text-slate-700 rounded-lg border border-slate-300 font-bold shadow-sm">
-                            Delhi-NCR Overview
+                    <!-- Road Condition Legend & Filters -->
+                    <div class="flex flex-wrap items-center gap-2 text-xs">
+                        <div class="flex items-center space-x-1 bg-white border border-slate-300 rounded-lg p-1 shadow-sm">
+                            <button onclick="filterRoadMap('')" class="px-2.5 py-1 rounded text-slate-700 hover:bg-slate-100 font-bold">All</button>
+                            <button onclick="filterRoadMap('RISKY')" class="px-2.5 py-1 rounded bg-rose-50 text-rose-700 border border-rose-200 font-bold flex items-center space-x-1">
+                                <span class="w-2 h-2 rounded-full bg-rose-600"></span>
+                                <span>Risky (Red)</span>
+                            </button>
+                            <button onclick="filterRoadMap('MODERATE')" class="px-2.5 py-1 rounded bg-amber-50 text-amber-700 border border-amber-200 font-bold flex items-center space-x-1">
+                                <span class="w-2 h-2 rounded-full bg-amber-500"></span>
+                                <span>Moderate (Yellow)</span>
+                            </button>
+                            <button onclick="filterRoadMap('SAFE')" class="px-2.5 py-1 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold flex items-center space-x-1">
+                                <span class="w-2 h-2 rounded-full bg-emerald-600"></span>
+                                <span>Safe (Green)</span>
+                            </button>
+                        </div>
+                        <button onclick="flyToCorridor(15.8497, 74.4977, 13)" class="px-3 py-1.5 bg-white hover:bg-slate-50 text-blue-700 rounded-lg border border-slate-300 font-bold shadow-sm">
+                            Center Belagavi
                         </button>
                     </div>
                 </div>
@@ -897,9 +1201,19 @@
             <!-- AUTHORITY TAB 6: DUPLICATE DETECTION -->
             <!-- ============================================== -->
             <section id="tab-duplicates" class="tab-content space-y-6">
-                <div>
-                    <h1 class="text-2xl font-extrabold text-slate-900">Cross-Inspection Duplicate Damage Detection</h1>
-                    <p class="text-sm text-slate-600 mt-1">Identifies redundant citizen and sensor reports using geospatial Haversine proximity (&lt; 25m) and perceptual visual hash matching.</p>
+                <div class="flex flex-wrap justify-between items-center gap-4">
+                    <div>
+                        <h1 class="text-2xl font-extrabold text-slate-900">Cross-Inspection Duplicate Damage Detection</h1>
+                        <p class="text-sm text-slate-600 mt-1">Multi-signal engine combining GPS Haversine proximity, perceptual hashing (dHash), and deep neural embeddings (MobileNetV3) to prevent redundant physical defect creation across Belagavi.</p>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-900 border border-amber-300">
+                            Search Radius: 25m
+                        </span>
+                        <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-900 border border-emerald-300">
+                            Neural Embeddings: Active
+                        </span>
+                    </div>
                 </div>
 
                 <div id="duplicates-container" class="space-y-4">
@@ -952,8 +1266,8 @@
                             <div class="bg-rose-50 border-l-4 border-rose-600 p-4 rounded-r-xl flex justify-between items-center">
                                 <div>
                                     <span class="text-xs font-bold text-rose-700 uppercase">Priority 1 &bull; Critical</span>
-                                    <h4 class="text-base font-bold text-slate-900 mt-0.5">NH-48 Gurugram-Delhi Express Highway</h4>
-                                    <p class="text-xs text-slate-600">Severe pothole cavity on high-speed 90 km/h corridor under wet conditions.</p>
+                                    <h4 class="text-base font-bold text-slate-900 mt-0.5">NH-48 Belagavi Bypass Highway (Kanbargi to Gandhi Nagar)</h4>
+                                    <p class="text-xs text-slate-600">Severe pothole cavity on high-speed 80 km/h corridor under wet conditions.</p>
                                 </div>
                                 <div class="text-right">
                                     <div class="text-2xl font-black text-rose-600">78.5</div>
@@ -964,7 +1278,7 @@
                             <div class="bg-amber-50 border-l-4 border-amber-600 p-4 rounded-r-xl flex justify-between items-center">
                                 <div>
                                     <span class="text-xs font-bold text-amber-700 uppercase">Priority 2 &bull; High</span>
-                                    <h4 class="text-base font-bold text-slate-900 mt-0.5">Inner Ring Road (Lajpat Nagar Flyover)</h4>
+                                    <h4 class="text-base font-bold text-slate-900 mt-0.5">Khanapur Road (Tilakwadi to 3rd Railway Gate)</h4>
                                     <p class="text-xs text-slate-600">Expanding alligator fatigue crack network on heavy transit route.</p>
                                 </div>
                                 <div class="text-right">
@@ -1026,7 +1340,7 @@
                     <div class="flex flex-col md:flex-row items-center justify-between gap-4 pb-4 border-b border-slate-200">
                         <div>
                             <span class="px-2.5 py-1 rounded-full text-xs font-bold uppercase bg-emerald-50 text-emerald-700 border border-emerald-200">Temporal Verification Case</span>
-                            <h3 class="text-lg font-bold text-slate-900 mt-1">NH-48 Gurugram Corridor: Baseline vs Post-Repair</h3>
+                            <h3 class="text-lg font-bold text-slate-900 mt-1">NH-48 Belagavi Corridor: Baseline vs Post-Repair</h3>
                             <p class="text-xs text-slate-500">Baseline Survey: 28 days ago &bull; Audit Survey: 2 days ago &bull; Bitumen patch verified.</p>
                         </div>
                         <span class="px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 font-bold text-sm border border-emerald-200">
@@ -1189,9 +1503,155 @@
                         <input type="text" readonly value="models/primary/roadvision_rdd2022_yolov8m.pt" class="w-full bg-slate-100 border border-slate-200 rounded-lg p-2.5 text-slate-600 font-mono" />
                     </div>
 
+                    <div class="pt-4 border-t border-slate-200 space-y-3">
+                        <div class="font-bold text-slate-800 text-sm flex items-center space-x-1.5">
+                            <i data-lucide="map" class="w-4 h-4 text-blue-600"></i>
+                            <span>Map Provider & API Key Settings</span>
+                        </div>
+                        <p class="text-slate-600 text-[11px]">The platform defaults to <strong>OpenStreetMap</strong> which is 100% free and requires zero API keys. If you have a personal CARTO or Mapbox API key, you can enter it below.</p>
+                        <div>
+                            <label class="block text-slate-700 font-bold mb-1">CARTO / Basemap API Key</label>
+                            <div class="flex items-center space-x-2">
+                                <input type="text" id="setting-map-api-key" placeholder="Enter CARTO API Key (Optional)" class="w-full bg-white border border-slate-300 rounded-lg p-2.5 text-slate-900 font-mono text-xs" />
+                                <button type="button" onclick="saveMapApiKey()" class="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg whitespace-nowrap shadow-sm">
+                                    Apply Key
+                                </button>
+                                <button type="button" onclick="clearMapApiKey()" class="px-3 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg border border-slate-300 whitespace-nowrap">
+                                    Use Free OSM
+                                </button>
+                            </div>
+                            <span id="map-key-status" class="text-emerald-700 font-bold text-[11px] mt-1 block">Active: OpenStreetMap (No API key required)</span>
+                        </div>
+                    </div>
+
                     <button class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg shadow-sm">
                         Save Configurations
                     </button>
+                </div>
+            </section>
+
+
+            <!-- ============================================== -->
+            <!-- OVERVIEW DASHBOARD (LAST SECTION IN PLATFORM)  -->
+            <!-- ============================================== -->
+            <section id="tab-overview" class="tab-content space-y-6">
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div>
+                        <div class="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200 mb-2">
+                            <i data-lucide="layout-dashboard" class="w-3.5 h-3.5"></i>
+                            <span>RoadGuard AI Command Center &bull; Section 10 Overview</span>
+                        </div>
+                        <h1 class="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight">Executive Road Infrastructure Dashboard</h1>
+                        <p class="text-sm text-slate-600 mt-1">Live summary statistics and road classification distribution generated dynamically from the verified road health database.</p>
+                    </div>
+                    <div class="flex items-center space-x-3">
+                        <button onclick="loadDashboardAnalytics()" class="px-3.5 py-2 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs rounded-lg border border-slate-300 shadow-sm flex items-center space-x-1.5">
+                            <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+                            <span>Refresh Statistics</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Live Summary Statistics Grid (9 Metric Cards) -->
+                <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                    <div class="glass-card p-4 border-l-4 border-blue-600">
+                        <div class="text-[11px] font-bold text-slate-500 uppercase tracking-wide">Total Monitored Roads</div>
+                        <div id="kpi-total-roads" class="text-2xl font-black text-slate-900 mt-1">--</div>
+                        <div class="text-[11px] text-slate-500 mt-0.5">Belagavi corridors</div>
+                    </div>
+                    <div class="glass-card p-4 border-l-4 border-rose-600 bg-rose-50/30">
+                        <div class="text-[11px] font-bold text-rose-700 uppercase tracking-wide">Risky / Critical Roads</div>
+                        <div id="kpi-risky-roads" class="text-2xl font-black text-rose-600 mt-1">--</div>
+                        <div class="text-[11px] text-rose-700 font-semibold mt-0.5">High hazard (RED)</div>
+                    </div>
+                    <div class="glass-card p-4 border-l-4 border-amber-500 bg-amber-50/30">
+                        <div class="text-[11px] font-bold text-amber-700 uppercase tracking-wide">Moderate Roads</div>
+                        <div id="kpi-moderate-roads" class="text-2xl font-black text-amber-600 mt-1">--</div>
+                        <div class="text-[11px] text-amber-700 font-semibold mt-0.5">Noticeable damage (YELLOW)</div>
+                    </div>
+                    <div class="glass-card p-4 border-l-4 border-emerald-600 bg-emerald-50/30">
+                        <div class="text-[11px] font-bold text-emerald-700 uppercase tracking-wide">Safe Roads</div>
+                        <div id="kpi-safe-roads" class="text-2xl font-black text-emerald-600 mt-1">--</div>
+                        <div class="text-[11px] text-emerald-700 font-semibold mt-0.5">Sound condition (GREEN)</div>
+                    </div>
+                    <div class="glass-card p-4 border-l-4 border-rose-500">
+                        <div class="text-[11px] font-bold text-slate-500 uppercase tracking-wide">Total Potholes</div>
+                        <div id="kpi-total-potholes" class="text-2xl font-black text-rose-700 mt-1">--</div>
+                        <div class="text-[11px] text-slate-500 mt-0.5">Active verified cavities</div>
+                    </div>
+                    <div class="glass-card p-4 border-l-4 border-cyan-600">
+                        <div class="text-[11px] font-bold text-slate-500 uppercase tracking-wide">Average Road Condition</div>
+                        <div id="kpi-avg-condition" class="text-2xl font-black text-cyan-700 mt-1">--%</div>
+                        <div class="text-[11px] text-slate-500 mt-0.5">City-wide network health</div>
+                    </div>
+                    <div class="glass-card p-4 border-l-4 border-amber-400">
+                        <div class="text-[11px] font-bold text-slate-500 uppercase tracking-wide">Pending Citizen Reports</div>
+                        <div id="kpi-pending-reports" class="text-2xl font-black text-amber-600 mt-1">--</div>
+                        <div class="text-[11px] text-slate-500 mt-0.5">Awaiting verification</div>
+                    </div>
+                    <div class="glass-card p-4 border-l-4 border-emerald-500">
+                        <div class="text-[11px] font-bold text-slate-500 uppercase tracking-wide">Accepted Reports</div>
+                        <div id="kpi-accepted-reports" class="text-2xl font-black text-emerald-600 mt-1">--</div>
+                        <div class="text-[11px] text-slate-500 mt-0.5">Integrated to official DB</div>
+                    </div>
+                    <div class="glass-card p-4 border-l-4 border-slate-400">
+                        <div class="text-[11px] font-bold text-slate-500 uppercase tracking-wide">Rejected Reports</div>
+                        <div id="kpi-rejected-reports" class="text-2xl font-black text-slate-600 mt-1">--</div>
+                        <div class="text-[11px] text-slate-500 mt-0.5">Preserved for audit</div>
+                    </div>
+                </div>
+
+                <!-- Charts Section: Road Distribution Chart + Severity Chart -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div class="glass-card p-6 lg:col-span-1">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wider">Road Condition Distribution</h3>
+                            <span class="text-[11px] font-bold text-blue-600">3-Tier Classification</span>
+                        </div>
+                        <div class="h-64 relative">
+                            <canvas id="chart-road-distribution"></canvas>
+                        </div>
+                        <div class="flex justify-around text-center text-xs pt-3 border-t border-slate-100 mt-2">
+                            <div><span class="inline-block w-2.5 h-2.5 rounded-full bg-rose-500 mr-1"></span><span class="font-bold text-slate-700">Risky (Red)</span></div>
+                            <div><span class="inline-block w-2.5 h-2.5 rounded-full bg-amber-500 mr-1"></span><span class="font-bold text-slate-700">Moderate (Yellow)</span></div>
+                            <div><span class="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500 mr-1"></span><span class="font-bold text-slate-700">Safe (Green)</span></div>
+                        </div>
+                    </div>
+
+                    <div class="glass-card p-6 lg:col-span-2">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wider">Defect Breakdown by Category</h3>
+                            <span class="text-xs font-mono text-slate-500">D00 / D10 / D20 / D40</span>
+                        </div>
+                        <div class="h-64 relative">
+                            <canvas id="chart-categories"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recent Inspections Table -->
+                <div class="glass-card p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wider">Recent Road Condition Surveys</h3>
+                        <button onclick="switchTab('history')" class="text-xs font-bold text-blue-600 hover:text-blue-700">View All Records &rarr;</button>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="text-[11px] font-bold text-slate-500 uppercase border-b border-slate-200 bg-slate-50">
+                                    <th class="py-3 px-4">Inspection Code</th>
+                                    <th class="py-3 px-4">Road Name / Location</th>
+                                    <th class="py-3 px-4">Media</th>
+                                    <th class="py-3 px-4">Defects</th>
+                                    <th class="py-3 px-4">Risk Level</th>
+                                    <th class="py-3 px-4 text-right">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="recent-surveys-body" class="divide-y divide-slate-100">
+                                <tr><td colspan="6" class="text-center py-6 text-slate-400 font-medium">Loading survey records...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </section>
 
@@ -1200,7 +1660,68 @@
 
     <!-- ============================================== -->
     <!-- DUAL SIGN-IN MODAL (USER END vs AUTHORITY END) -->
-    <!-- ============================================== -->
+
+    <!-- Road Inspection History Modal -->
+    <div id="road-history-modal" class="fixed inset-0 modal-overlay z-50 flex items-center justify-center p-4 hidden">
+        <div class="glass-card max-w-3xl w-full max-h-[85vh] overflow-y-auto p-6 space-y-4 shadow-2xl border border-slate-200">
+            <div class="flex justify-between items-center pb-3 border-b border-slate-200">
+                <div>
+                    <h3 id="history-modal-road-name" class="text-lg font-black text-slate-900">Road Inspection History</h3>
+                    <p id="history-modal-road-sub" class="text-xs text-slate-500">Historical condition progression over time</p>
+                </div>
+                <button onclick="closeRoadHistoryModal()" class="text-slate-400 hover:text-slate-800 text-2xl font-bold">&times;</button>
+            </div>
+
+            <!-- Current Road Health Snapshot -->
+            <div class="grid grid-cols-4 gap-3 bg-slate-50 p-4 rounded-xl border border-slate-200 text-center text-xs">
+                <div>
+                    <span class="text-slate-400 block font-bold uppercase text-[10px]">Current Health</span>
+                    <strong id="history-modal-condition" class="text-base font-black text-blue-600">--%</strong>
+                </div>
+                <div>
+                    <span class="text-slate-400 block font-bold uppercase text-[10px]">Potholes</span>
+                    <strong id="history-modal-potholes" class="text-base font-black text-rose-600">--</strong>
+                </div>
+                <div>
+                    <span class="text-slate-400 block font-bold uppercase text-[10px]">Risk Tier</span>
+                    <strong id="history-modal-risk" class="text-base font-black text-amber-600">--</strong>
+                </div>
+                <div>
+                    <span class="text-slate-400 block font-bold uppercase text-[10px]">Total Surveys</span>
+                    <strong id="history-modal-count" class="text-base font-black text-slate-800">--</strong>
+                </div>
+            </div>
+
+            <!-- Timeline Table -->
+            <div>
+                <h4 class="text-xs font-bold text-slate-800 uppercase tracking-wider mb-2">Inspection Timeline & Evolution</h4>
+                <div class="overflow-x-auto max-h-60 overflow-y-auto">
+                    <table class="w-full text-left border-collapse text-xs">
+                        <thead>
+                            <tr class="text-[11px] font-bold text-slate-500 uppercase border-b border-slate-200 bg-slate-50 sticky top-0">
+                                <th class="py-2.5 px-3">Date</th>
+                                <th class="py-2.5 px-3">Condition %</th>
+                                <th class="py-2.5 px-3">Potholes</th>
+                                <th class="py-2.5 px-3">Risk Level</th>
+                                <th class="py-2.5 px-3">Source</th>
+                                <th class="py-2.5 px-3">Inspector / Reviewer</th>
+                            </tr>
+                        </thead>
+                        <tbody id="road-history-timeline-body" class="divide-y divide-slate-100">
+                            <!-- Dynamic rows -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="flex justify-end pt-3 border-t border-slate-200">
+                <button onclick="closeRoadHistoryModal()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold rounded-lg border border-slate-300">Close</button>
+            </div>
+        </div>
+    </div>
+
+
+<!-- ============================================== -->
     <div id="signin-modal" class="fixed inset-0 modal-overlay z-50 flex items-center justify-center p-4 hidden">
         <div class="glass-card max-w-2xl w-full p-6 md:p-8 space-y-6 shadow-2xl border border-slate-200">
             <div class="flex justify-between items-center pb-4 border-b border-slate-200">
