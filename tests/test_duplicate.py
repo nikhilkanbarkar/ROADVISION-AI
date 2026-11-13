@@ -3,7 +3,12 @@ ROADVISION AI - Test Suite for Cross-Inspection Duplicate Detection Engine
 Tests spatial proximity, perceptual hash similarity, and candidate flagging.
 """
 from types import SimpleNamespace
-from backend.duplicate_engine import haversine_distance_meters, hamming_similarity, evaluate_duplicate_candidate
+from backend.duplicate_engine import (
+    haversine_distance_meters,
+    hamming_similarity,
+    evaluate_duplicate_candidate,
+    check_is_within_belagavi,
+)
 
 def test_haversine_distance():
     # Delhi Connaught Place to India Gate ~ 2.4 km
@@ -61,3 +66,24 @@ def test_duplicate_candidate_different_locations():
     res = evaluate_duplicate_candidate(d2, d1)
     assert res["is_duplicate"] is False
     assert res["spatial_distance_m"] > 1000.0
+
+
+def test_duplicate_candidate_does_not_override_distance_with_deep_embedding_similarity():
+    d1 = SimpleNamespace(
+        id=1, category_code="D40", class_name="pothole",
+        latitude=15.8450, longitude=74.5050,
+        image_hash="ffff", image_embedding=[1.0] * 100
+    )
+    d2 = SimpleNamespace(
+        id=2, category_code="D40", class_name="pothole",
+        latitude=15.8500, longitude=74.5100,
+        image_hash="ffff", image_embedding=[1.0] * 100
+    )
+
+    res = evaluate_duplicate_candidate(d2, d1)
+    assert res["decision"] == "NEW_DAMAGE"
+    assert res["is_duplicate"] is False
+
+
+def test_belagavi_boundary_rejects_zero_coordinate_fallback():
+    assert check_is_within_belagavi(0.0, 0.0) is False
