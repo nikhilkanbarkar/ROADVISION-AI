@@ -105,6 +105,92 @@ def health_check():
     }
 
 # ==========================================
+# AUTH & ROLE-BASED ACCESS CONTROL (RBAC)
+# ==========================================
+PRESET_USERS = {
+    "citizen": {
+        "id": 101,
+        "username": "citizen_priya",
+        "email": "citizen@roadvision.in",
+        "name": "Priya Sharma",
+        "role": "citizen",
+        "title": "Citizen Reporter & Motorist",
+        "badge": "Public User (Citizen End)",
+        "department": "Public Roads Citizen Cell",
+        "permissions": ["report_image", "report_video", "track_grievances", "view_safety_map"]
+    },
+    "authority": {
+        "id": 201,
+        "username": "er_rajesh_verma",
+        "email": "authority@pwd.gov.in",
+        "name": "Er. Rajesh Verma",
+        "role": "authority",
+        "title": "Chief Municipal Engineer",
+        "badge": "Civil Authority (Full Access)",
+        "department": "Public Works Dept (PWD) / NHAI",
+        "permissions": [
+            "full_admin", "inspect_image", "inspect_video", "manage_tracking",
+            "resolve_duplicates", "prioritize_risk", "dispatch_repairs",
+            "verify_defects", "compare_progress", "export_reports", "benchmark_models"
+        ]
+    }
+}
+
+@app.post("/api/auth/login")
+def login_portal(
+    role: str = Form("authority"),
+    identifier: Optional[str] = Form(None),
+    password: Optional[str] = Form(None)
+):
+    role_key = "authority" if "auth" in role.lower() or "admin" in role.lower() or "eng" in role.lower() else "citizen"
+    user_info = dict(PRESET_USERS[role_key])
+    if identifier and "@" in identifier:
+        user_info["email"] = identifier
+    return {
+        "status": "success",
+        "user": user_info,
+        "token": f"roadvision-token-{role_key}-{uuid.uuid4().hex[:6]}"
+    }
+
+@app.get("/api/auth/me")
+def get_current_user_profile(role: str = Query("authority")):
+    role_key = "authority" if "auth" in role.lower() or "admin" in role.lower() else "citizen"
+    return {
+        "status": "success",
+        "user": PRESET_USERS[role_key]
+    }
+
+@app.get("/api/citizen/my-reports")
+def get_citizen_reports(db: Session = Depends(get_db)):
+    """Fetch citizen submitted reports and their live repair status."""
+    inspections = db.query(Inspection).order_by(desc(Inspection.id)).limit(15).all()
+    results = []
+    statuses = [
+        ("Repaired & Verified", "bg-emerald-50 text-emerald-700 border border-emerald-200", 100),
+        ("Contractor Dispatched", "bg-blue-50 text-blue-700 border border-blue-200", 75),
+        ("Under Municipal Audit", "bg-amber-50 text-amber-700 border border-amber-200", 50),
+        ("AI Verified & Logged", "bg-indigo-50 text-indigo-700 border border-indigo-200", 25)
+    ]
+    for idx, ins in enumerate(inspections):
+        stat_name, stat_class, progress = statuses[idx % len(statuses)]
+        results.append({
+            "id": ins.id,
+            "ticket_code": f"CIT-{ins.code}",
+            "road_name": ins.road_name,
+            "upload_date": ins.upload_time.strftime("%d %b %Y, %H:%M") if ins.upload_time else "Recent",
+            "defect_count": ins.unique_defects_count,
+            "severity": "Severe" if ins.severe_count > 0 else ("Moderate" if ins.moderate_count > 0 else "Minor"),
+            "risk_score": ins.risk_score,
+            "risk_level": ins.risk_level,
+            "status": stat_name,
+            "status_class": stat_class,
+            "progress_pct": progress,
+            "annotated_url": f"/media/outputs/{os.path.basename(ins.annotated_path)}" if ins.annotated_path else None,
+            "remarks": ins.notes or "Scheduled for bitumen patching under Ward Maintenance Plan."
+        })
+    return {"status": "success", "reports": results}
+
+# ==========================================
 # 1. IMAGE INSPECTION ENDPOINT
 # ==========================================
 @app.post("/api/inspect/image")

@@ -1,22 +1,182 @@
 /**
- * ROADVISION AI - Central Application Controller
- * Handles tab navigation, asynchronous API integration, dashboard analytics,
- * image/video inspections, duplicate resolution, repair lifecycle, and reporting.
+ * ROADVISION AI - Central Application Controller (White Theme & RBAC Edition)
+ * Handles role-based dual-sided access (Citizen End vs Authority End),
+ * AI image & video inspections, persistent ByteTrack tracking,
+ * citizen grievance reporting, duplicate resolution, and municipal reporting.
  */
 
 let categoryChart = null;
 let severityChart = null;
 let activeInspectionId = null;
 
+// User Session & Role State
+let currentUser = {
+    role: "authority", // "citizen" or "authority"
+    name: "Er. Rajesh Verma",
+    email: "authority@pwd.gov.in",
+    title: "Chief Municipal Engineer",
+    badge: "Civil Authority (Full Access)"
+};
+
 document.addEventListener("DOMContentLoaded", () => {
     initNavigation();
-    loadDashboardAnalytics();
+    initRoleSession();
     setupDropzone();
     setupVideoDropzone();
+    setupCitizenDropzone();
 });
 
 // ==========================================
-// 1. NAVIGATION & TAB SWITCHING
+// 1. ROLE-BASED ACCESS CONTROL (RBAC) & SIGN-IN
+// ==========================================
+function initRoleSession() {
+    const savedRole = localStorage.getItem("roadvision_role") || "authority";
+    const savedName = localStorage.getItem("roadvision_name");
+    const savedEmail = localStorage.getItem("roadvision_email");
+
+    if (savedRole === "citizen") {
+        currentUser = {
+            role: "citizen",
+            name: savedName || "Priya Sharma",
+            email: savedEmail || "citizen@roadvision.in",
+            title: "Citizen Reporter & Motorist",
+            badge: "Public User (Citizen End)"
+        };
+    } else {
+        currentUser = {
+            role: "authority",
+            name: savedName || "Er. Rajesh Verma",
+            email: savedEmail || "authority@pwd.gov.in",
+            title: "Chief Municipal Engineer",
+            badge: "Civil Authority (Full Access)"
+        };
+    }
+    applyRolePermissions(currentUser.role);
+}
+
+function openSignInModal() {
+    const modal = document.getElementById("signin-modal");
+    if (modal) {
+        modal.classList.remove("hidden");
+        switchLoginRoleTab(currentUser.role || "authority");
+    }
+}
+
+function closeSignInModal() {
+    const modal = document.getElementById("signin-modal");
+    if (modal) modal.classList.add("hidden");
+}
+
+function switchLoginRoleTab(role) {
+    const btnCitizen = document.getElementById("modal-tab-citizen");
+    const btnAuth = document.getElementById("modal-tab-authority");
+    const panelCitizen = document.getElementById("login-panel-citizen");
+    const panelAuth = document.getElementById("login-panel-authority");
+
+    if (role === "citizen") {
+        btnCitizen.className = "py-2.5 px-4 rounded-lg text-xs font-bold transition flex items-center justify-center space-x-2 bg-white text-emerald-800 shadow-sm border border-slate-200";
+        btnAuth.className = "py-2.5 px-4 rounded-lg text-xs font-bold transition flex items-center justify-center space-x-2 text-slate-600 hover:text-slate-900";
+        panelCitizen.classList.remove("hidden");
+        panelAuth.classList.add("hidden");
+    } else {
+        btnAuth.className = "py-2.5 px-4 rounded-lg text-xs font-bold transition flex items-center justify-center space-x-2 bg-white text-blue-700 shadow-sm border border-slate-200";
+        btnCitizen.className = "py-2.5 px-4 rounded-lg text-xs font-bold transition flex items-center justify-center space-x-2 text-slate-600 hover:text-slate-900";
+        panelAuth.classList.remove("hidden");
+        panelCitizen.classList.add("hidden");
+    }
+    if (window.lucide) lucide.createIcons();
+}
+
+async function performSignIn(role) {
+    try {
+        const formData = new FormData();
+        formData.append("role", role);
+        if (role === "citizen") {
+            const name = document.getElementById("citizen-login-name").value || "Priya Sharma";
+            const email = document.getElementById("citizen-login-email").value || "citizen@roadvision.in";
+            formData.append("identifier", email);
+            currentUser = {
+                role: "citizen",
+                name: name,
+                email: email,
+                title: "Citizen Reporter & Motorist",
+                badge: "Public User (Citizen End)"
+            };
+        } else {
+            const email = document.getElementById("auth-login-email").value || "authority@pwd.gov.in";
+            formData.append("identifier", email);
+            currentUser = {
+                role: "authority",
+                name: "Er. Rajesh Verma",
+                email: email,
+                title: "Chief Municipal Engineer",
+                badge: "Civil Authority (Full Access)"
+            };
+        }
+
+        localStorage.setItem("roadvision_role", currentUser.role);
+        localStorage.setItem("roadvision_name", currentUser.name);
+        localStorage.setItem("roadvision_email", currentUser.email);
+
+        await fetch("/api/auth/login", { method: "POST", body: formData });
+    } catch(e) {
+        console.warn("Auth endpoint fallback:", e);
+    }
+
+    applyRolePermissions(currentUser.role);
+    closeSignInModal();
+}
+
+function applyRolePermissions(role) {
+    const navCitizen = document.getElementById("sidebar-citizen-nav");
+    const navAuth = document.getElementById("sidebar-authority-nav");
+    const rolePill = document.getElementById("active-role-pill");
+    const roleDot = document.getElementById("role-dot");
+    const roleLabel = document.getElementById("role-label");
+    const nameBadge = document.getElementById("user-name-badge");
+    const profileAvatar = document.getElementById("profile-avatar-circle");
+    const profileName = document.getElementById("profile-name");
+    const profileSub = document.getElementById("profile-role-sub");
+
+    if (role === "citizen") {
+        if (navCitizen) navCitizen.classList.remove("hidden");
+        if (navAuth) navAuth.classList.add("hidden");
+
+        rolePill.className = "flex items-center space-x-2 px-3 py-1.5 rounded-full border text-xs font-semibold shadow-sm transition-all bg-emerald-50 text-emerald-800 border-emerald-300";
+        roleDot.className = "w-2.5 h-2.5 rounded-full bg-emerald-600 animate-pulse";
+        roleLabel.textContent = "Citizen / Public End";
+        nameBadge.textContent = `• ${currentUser.name}`;
+
+        profileAvatar.className = "w-9 h-9 rounded-full bg-emerald-600 text-white font-black text-sm flex items-center justify-center shrink-0 shadow-sm";
+        profileAvatar.textContent = "PS";
+        profileName.textContent = currentUser.name;
+        profileSub.textContent = "Citizen Reporter";
+        profileSub.className = "text-[11px] text-emerald-700 font-semibold truncate";
+
+        switchTab("citizen-report");
+    } else {
+        if (navCitizen) navCitizen.classList.add("hidden");
+        if (navAuth) navAuth.classList.remove("hidden");
+
+        rolePill.className = "flex items-center space-x-2 px-3 py-1.5 rounded-full border text-xs font-semibold shadow-sm transition-all bg-blue-50 text-blue-700 border-blue-200";
+        roleDot.className = "w-2.5 h-2.5 rounded-full bg-blue-600 animate-pulse";
+        roleLabel.textContent = "Civil Authority End";
+        nameBadge.textContent = `• ${currentUser.name}`;
+
+        profileAvatar.className = "w-9 h-9 rounded-full bg-blue-600 text-white font-black text-sm flex items-center justify-center shrink-0 shadow-sm";
+        profileAvatar.textContent = "RV";
+        profileName.textContent = currentUser.name;
+        profileSub.textContent = "Chief Municipal Engineer";
+        profileSub.className = "text-[11px] text-blue-700 font-semibold truncate";
+
+        switchTab("overview");
+    }
+
+    if (window.lucide) lucide.createIcons();
+}
+
+// ==========================================
+// 2. NAVIGATION & TAB SWITCHING
 // ==========================================
 function initNavigation() {
     const navItems = document.querySelectorAll(".nav-item");
@@ -30,15 +190,20 @@ function initNavigation() {
 }
 
 function switchTab(tabId) {
+    // Reset all nav styling to clean light slate
     document.querySelectorAll(".nav-item").forEach(el => {
-        el.classList.remove("bg-blue-600/20", "text-blue-400", "border-l-4", "border-blue-500");
-        el.classList.add("text-slate-400");
+        el.classList.remove("bg-blue-50", "text-blue-700", "border-l-4", "border-blue-600", "shadow-sm", "bg-emerald-50", "text-emerald-800", "border-emerald-600");
+        el.classList.add("text-slate-600");
     });
 
     const activeNav = document.querySelector(`.nav-item[data-tab="${tabId}"]`);
     if (activeNav) {
-        activeNav.classList.add("bg-blue-600/20", "text-blue-400", "border-l-4", "border-blue-500");
-        activeNav.classList.remove("text-slate-400");
+        if (tabId.startsWith("citizen-")) {
+            activeNav.classList.add("bg-emerald-50", "text-emerald-800", "border-l-4", "border-emerald-600", "shadow-sm");
+        } else {
+            activeNav.classList.add("bg-blue-50", "text-blue-700", "border-l-4", "border-blue-600", "shadow-sm");
+        }
+        activeNav.classList.remove("text-slate-600");
     }
 
     document.querySelectorAll(".tab-content").forEach(el => el.classList.remove("active"));
@@ -49,7 +214,11 @@ function switchTab(tabId) {
 
     // Lazy load tab specific components
     if (tabId === "map") {
-        setTimeout(initRoadMap, 200);
+        setTimeout(initRoadMap, 150);
+    } else if (tabId === "citizen-map") {
+        setTimeout(initCitizenMap, 150);
+    } else if (tabId === "citizen-myreports") {
+        loadCitizenReports();
     } else if (tabId === "history") {
         loadInspectionHistory();
     } else if (tabId === "duplicates") {
@@ -63,10 +232,247 @@ function switchTab(tabId) {
     } else if (tabId === "overview") {
         loadDashboardAnalytics();
     }
+
+    if (window.lucide) lucide.createIcons();
 }
 
 // ==========================================
-// 2. DASHBOARD & ANALYTICS
+// 3. CITIZEN END: REPORTING PIPELINE
+// ==========================================
+let citizenSelectedFile = null;
+
+function setupCitizenDropzone() {
+    const dropzone = document.getElementById("citizen-dropzone");
+    const fileInput = document.getElementById("citizen-file-input");
+    if (!dropzone || !fileInput) return;
+
+    dropzone.addEventListener("click", () => fileInput.click());
+    dropzone.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        dropzone.classList.add("border-emerald-500", "bg-emerald-50/50");
+    });
+    dropzone.addEventListener("dragleave", () => {
+        dropzone.classList.remove("border-emerald-500", "bg-emerald-50/50");
+    });
+    dropzone.addEventListener("drop", (e) => {
+        e.preventDefault();
+        dropzone.classList.remove("border-emerald-500", "bg-emerald-50/50");
+        if (e.dataTransfer.files.length > 0) {
+            fileInput.files = e.dataTransfer.files;
+            handleCitizenFileSelected(fileInput.files[0]);
+        }
+    });
+
+    fileInput.addEventListener("change", () => {
+        if (fileInput.files.length > 0) {
+            handleCitizenFileSelected(fileInput.files[0]);
+        }
+    });
+}
+
+function handleCitizenFileSelected(file) {
+    if (!file) return;
+    citizenSelectedFile = file;
+
+    const preview = document.getElementById("citizen-img-preview");
+    const promptBox = document.getElementById("citizen-dropzone-prompt");
+    const badge = document.getElementById("citizen-file-badge");
+
+    const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
+    badge.textContent = `Selected: ${file.name} (${sizeMB} MB) - Ready for AI Scan`;
+    badge.classList.remove("hidden");
+
+    if (file.type.startsWith("image/")) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            preview.src = e.target.result;
+            preview.classList.remove("hidden");
+            promptBox.classList.add("hidden");
+        };
+        reader.readAsDataURL(file);
+    } else {
+        preview.classList.add("hidden");
+        promptBox.classList.remove("hidden");
+    }
+}
+
+function detectCitizenGPS() {
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+            (pos) => {
+                const lat = pos.coords.latitude.toFixed(5);
+                const lon = pos.coords.longitude.toFixed(5);
+                document.getElementById("citizen-coords").value = `${lat}, ${lon}`;
+            },
+            (err) => {
+                alert("GPS permission denied or unavailable. Using default Sector 29 coordinates.");
+                document.getElementById("citizen-coords").value = "28.4712, 77.0725";
+            }
+        );
+    } else {
+        document.getElementById("citizen-coords").value = "28.4712, 77.0725";
+    }
+}
+
+async function submitCitizenReport() {
+    const fileInput = document.getElementById("citizen-file-input");
+    if (!citizenSelectedFile && (!fileInput.files || fileInput.files.length === 0)) {
+        alert("Please tap to select or drop a road photo or video first.");
+        return;
+    }
+
+    const file = citizenSelectedFile || fileInput.files[0];
+    const btn = document.getElementById("btn-citizen-submit");
+    btn.disabled = true;
+    btn.innerHTML = `<span class="animate-spin inline-block mr-2">&#9696;</span> AI Analyzing & Generating Grievance Ticket...`;
+
+    const roadName = document.getElementById("citizen-road-name").value || "MG Road, Sector 29";
+    const speed = document.getElementById("citizen-speed").value || "60";
+    const coordsStr = document.getElementById("citizen-coords").value || "28.4712, 77.0725";
+    const [lat, lon] = coordsStr.split(",").map(s => parseFloat(s.trim()));
+
+    const isVideo = file.type.startsWith("video/") || file.name.match(/\.(mp4|avi|mov|mkv)$/i);
+    const endpoint = isVideo ? "/api/inspect/video" : "/api/inspect/image";
+
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("road_name", roadName);
+    formData.append("road_type", "Arterial");
+    formData.append("speed_limit", speed);
+    formData.append("weather", "Clear/Dry");
+    formData.append("traffic", "Moderate");
+    if (!isNaN(lat) && !isNaN(lon)) {
+        formData.append("manual_lat", lat);
+        formData.append("manual_lon", lon);
+    }
+
+    try {
+        const res = await fetch(endpoint, { method: "POST", body: formData });
+        const data = await res.json();
+
+        if (data.status === "success") {
+            displayCitizenReportResult(data, roadName);
+        } else {
+            alert("Submission error: " + (data.detail || "Unable to process report"));
+        }
+    } catch(e) {
+        console.error("Citizen submission error:", e);
+        alert("Report submission failed. Please check network and retry.");
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = `<i data-lucide="send" class="w-4 h-4"></i><span>Submit Grievance to Authority</span>`;
+        if (window.lucide) lucide.createIcons();
+    }
+}
+
+function displayCitizenReportResult(data, roadName) {
+    const resultCard = document.getElementById("citizen-result-card");
+    resultCard.classList.remove("hidden");
+
+    document.getElementById("citizen-ticket-number").textContent = `#CIT-${data.code}`;
+    const imgElem = document.getElementById("citizen-annotated-img");
+    imgElem.src = data.annotated_url || data.original_url || "";
+
+    const alertBox = document.getElementById("citizen-risk-alert-box");
+    const headline = document.getElementById("citizen-risk-headline");
+    const desc = document.getElementById("citizen-risk-desc");
+
+    const totalDef = data.total_detections || data.unique_defects || 0;
+    const score = data.risk_score || 0;
+
+    if (totalDef === 0) {
+        alertBox.className = "p-4 rounded-xl border flex items-start space-x-3 bg-emerald-50 border-emerald-200 text-emerald-900";
+        headline.textContent = "Road Condition Verified: Sound Pavement";
+        desc.textContent = "No critical pothole cavities were detected by the AI inspection engine on this image. PWD road maintenance log updated.";
+    } else if (score >= 50) {
+        alertBox.className = "p-4 rounded-xl border flex items-start space-x-3 bg-rose-50 border-rose-200 text-rose-900";
+        headline.textContent = `Caution: High Risk Road Defect Verified (Score ${score}/100)`;
+        desc.textContent = `AI detected ${totalDef} road surface defect(s) on ${roadName}. A high-priority grievance order has been queued for municipal asphalt patching.`;
+    } else {
+        alertBox.className = "p-4 rounded-xl border flex items-start space-x-3 bg-amber-50 border-amber-200 text-amber-900";
+        headline.textContent = `Moderate Distress Verified (Score ${score}/100)`;
+        desc.textContent = `AI identified minor/moderate distress on ${roadName}. Complaint dispatched to regular zonal maintenance.`;
+    }
+
+    resultCard.scrollIntoView({ behavior: "smooth" });
+}
+
+async function loadCitizenReports() {
+    const listContainer = document.getElementById("citizen-myreports-list");
+    if (!listContainer) return;
+    listContainer.innerHTML = `<div class="p-8 text-center text-slate-500">Loading your reported grievances...</div>`;
+
+    try {
+        const res = await fetch("/api/citizen/my-reports");
+        const data = await res.json();
+        listContainer.innerHTML = "";
+
+        if (!data.reports || data.reports.length === 0) {
+            listContainer.innerHTML = `
+                <div class="text-center py-10 bg-slate-50 rounded-xl border border-slate-200">
+                    <i data-lucide="inbox" class="w-10 h-10 text-slate-400 mx-auto mb-2"></i>
+                    <div class="font-bold text-slate-800">No Citizen Reports Yet</div>
+                    <div class="text-xs text-slate-500 mt-1">Submit your first road distress report via the "Report Road Damage" tab.</div>
+                </div>
+            `;
+            if (window.lucide) lucide.createIcons();
+            return;
+        }
+
+        data.reports.forEach(rep => {
+            const card = document.createElement("div");
+            card.className = "p-5 bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition space-y-4";
+            card.innerHTML = `
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-100">
+                    <div>
+                        <div class="flex items-center space-x-2">
+                            <span class="font-mono text-xs font-black text-blue-700 bg-blue-50 px-2.5 py-0.5 rounded-full border border-blue-200">${rep.ticket_code}</span>
+                            <span class="text-xs text-slate-500 font-medium">${rep.upload_date}</span>
+                        </div>
+                        <h4 class="text-base font-bold text-slate-900 mt-1">${rep.road_name}</h4>
+                    </div>
+                    <div>
+                        <span class="px-3 py-1 rounded-full text-xs font-bold ${rep.status_class}">${rep.status}</span>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+                    <div>
+                        <span class="text-slate-500 font-bold">Observed Distress:</span>
+                        <div class="font-semibold text-slate-800 mt-0.5">${rep.defect_count} defect(s) (${rep.severity})</div>
+                    </div>
+                    <div>
+                        <span class="text-slate-500 font-bold">Safety Risk Tier:</span>
+                        <div class="font-bold text-amber-700 mt-0.5">${rep.risk_score} / 100 (${rep.risk_level})</div>
+                    </div>
+                    <div>
+                        <span class="text-slate-500 font-bold">Action Remarks:</span>
+                        <div class="text-slate-600 mt-0.5 truncate">${rep.remarks}</div>
+                    </div>
+                </div>
+
+                <!-- Progress Bar -->
+                <div>
+                    <div class="flex justify-between text-[11px] font-bold text-slate-600 mb-1">
+                        <span>Municipal Resolution Progress</span>
+                        <span>${rep.progress_pct}%</span>
+                    </div>
+                    <div class="w-full bg-slate-100 rounded-full h-2 overflow-hidden border border-slate-200">
+                        <div class="h-full rounded-full transition-all duration-500 ${rep.progress_pct >= 100 ? 'bg-emerald-600' : 'bg-blue-600'}" style="width: ${rep.progress_pct}%"></div>
+                    </div>
+                </div>
+            `;
+            listContainer.appendChild(card);
+        });
+
+        if (window.lucide) lucide.createIcons();
+    } catch(e) {
+        console.error("Error loading citizen reports:", e);
+    }
+}
+
+// ==========================================
+// 4. AUTHORITY END: DASHBOARD & ANALYTICS
 // ==========================================
 async function loadDashboardAnalytics() {
     try {
@@ -83,10 +489,8 @@ async function loadDashboardAnalytics() {
         document.getElementById("kpi-repairs-active").textContent = kpis.repairs_in_progress;
         document.getElementById("kpi-repairs-verified").textContent = kpis.verified_repairs;
 
-        // Render Category Doughnut Chart
+        // Render Charts with Light Theme Typography
         renderCategoryChart(data.category_distribution);
-
-        // Render Severity Bar Chart
         renderSeverityChart(data.severity_distribution);
 
         // Populate Recent Surveys Table
@@ -107,15 +511,16 @@ function renderCategoryChart(catData) {
             labels: ['Longitudinal (D00)', 'Transverse (D10)', 'Alligator (D20)', 'Pothole (D40)'],
             datasets: [{
                 data: [catData.D00 || 0, catData.D10 || 0, catData.D20 || 0, catData.D40 || 0],
-                backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444'],
-                borderWidth: 0
+                backgroundColor: ['#2563eb', '#059669', '#d97706', '#dc2626'],
+                borderWidth: 2,
+                borderColor: '#ffffff'
             }]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
             plugins: {
-                legend: { position: 'bottom', labels: { color: '#94a3b8', boxWidth: 12 } }
+                legend: { position: 'bottom', labels: { color: '#475569', font: { size: 11, weight: 'bold' }, boxWidth: 12 } }
             },
             cutout: '68%'
         }
@@ -134,7 +539,7 @@ function renderSeverityChart(sevData) {
             datasets: [{
                 label: 'Defect Count',
                 data: [sevData.Minor || 0, sevData.Moderate || 0, sevData.Severe || 0],
-                backgroundColor: ['#10b981', '#f59e0b', '#ef4444'],
+                backgroundColor: ['#059669', '#d97706', '#dc2626'],
                 borderRadius: 6
             }]
         },
@@ -143,8 +548,8 @@ function renderSeverityChart(sevData) {
             maintainAspectRatio: false,
             plugins: { legend: { display: false } },
             scales: {
-                y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8' } },
-                x: { grid: { display: false }, ticks: { color: '#94a3b8' } }
+                y: { grid: { color: 'rgba(0, 0, 0, 0.06)' }, ticks: { color: '#64748b', font: { weight: 'bold' } } },
+                x: { grid: { display: false }, ticks: { color: '#475569', font: { weight: 'bold' } } }
             }
         }
     });
@@ -156,26 +561,26 @@ function renderRecentSurveys(recentList) {
     tbody.innerHTML = "";
 
     if (!recentList || recentList.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="6" class="text-center py-6 text-slate-500">No surveys recorded yet.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="6" class="text-center py-6 text-slate-400">No surveys recorded yet.</td></tr>`;
         return;
     }
 
     recentList.forEach(item => {
-        let riskBadge = `<span class="px-2 py-0.5 rounded text-xs font-semibold bg-emerald-500/20 text-emerald-400">Low</span>`;
-        if (item.risk_level === "Moderate") riskBadge = `<span class="px-2 py-0.5 rounded text-xs font-semibold bg-amber-500/20 text-amber-400">Moderate</span>`;
-        if (item.risk_level === "High") riskBadge = `<span class="px-2 py-0.5 rounded text-xs font-semibold bg-orange-500/20 text-orange-400">High</span>`;
-        if (item.risk_level === "Critical") riskBadge = `<span class="px-2 py-0.5 rounded text-xs font-semibold bg-rose-500/20 text-rose-400 pulse-glow-critical">Critical</span>`;
+        let riskBadge = `<span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">Low</span>`;
+        if (item.risk_level === "Moderate") riskBadge = `<span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200">Moderate</span>`;
+        if (item.risk_level === "High") riskBadge = `<span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-orange-50 text-orange-700 border border-orange-200">High</span>`;
+        if (item.risk_level === "Critical") riskBadge = `<span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-rose-50 text-rose-700 border border-rose-200">Critical</span>`;
 
         const row = document.createElement("tr");
-        row.className = "border-b border-slate-800 hover:bg-slate-800/40 transition";
+        row.className = "hover:bg-slate-50 transition border-b border-slate-100";
         row.innerHTML = `
-            <td class="py-3 px-4 font-mono text-xs text-blue-400">${item.code}</td>
-            <td class="py-3 px-4 font-medium text-slate-200">${item.road_name}</td>
-            <td class="py-3 px-4 text-xs uppercase text-slate-400">${item.media_type}</td>
-            <td class="py-3 px-4 text-sm font-semibold">${item.unique_defects}</td>
+            <td class="py-3 px-4 font-mono text-xs text-blue-700 font-bold">${item.code}</td>
+            <td class="py-3 px-4 font-bold text-slate-800">${item.road_name}</td>
+            <td class="py-3 px-4 text-xs uppercase text-slate-500 font-medium">${item.media_type}</td>
+            <td class="py-3 px-4 text-sm font-black text-slate-900">${item.unique_defects}</td>
             <td class="py-3 px-4">${riskBadge}</td>
             <td class="py-3 px-4 text-right">
-                <button onclick="viewInspectionDetail(${item.id})" class="px-3 py-1 bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-200 rounded border border-slate-700">
+                <button onclick="viewInspectionDetail(${item.id})" class="px-3 py-1 bg-white hover:bg-slate-100 text-xs font-bold text-slate-700 rounded-lg border border-slate-300 shadow-sm">
                     Inspect
                 </button>
             </td>
@@ -185,7 +590,7 @@ function renderRecentSurveys(recentList) {
 }
 
 // ==========================================
-// 3. IMAGE INSPECTION PIPELINE
+// 5. AUTHORITY END: IMAGE INSPECTION
 // ==========================================
 function setupDropzone() {
     const dropzone = document.getElementById("image-dropzone");
@@ -280,7 +685,7 @@ function displayImageInspectionResults(data) {
     const meterBar = document.getElementById("img-risk-bar");
     meterBar.style.width = `${score}%`;
     meterBar.className = "h-full transition-all duration-500 rounded-full " + (
-        score <= 25 ? "bg-emerald-500" : (score <= 50 ? "bg-amber-500" : (score <= 75 ? "bg-orange-500" : "bg-rose-500"))
+        score <= 25 ? "bg-emerald-600" : (score <= 50 ? "bg-amber-600" : (score <= 75 ? "bg-orange-600" : "bg-rose-600"))
     );
 
     // Populate Defect Table
@@ -291,15 +696,15 @@ function displayImageInspectionResults(data) {
         tbody.innerHTML = `<tr><td colspan="5" class="text-center py-4 text-slate-500">No defects detected. Road pavement is in sound condition.</td></tr>`;
     } else {
         data.defects.forEach(d => {
-            let sevColor = d.severity === "Minor" ? "text-emerald-400" : (d.severity === "Moderate" ? "text-amber-400" : "text-rose-400");
+            let sevColor = d.severity === "Minor" ? "text-emerald-700" : (d.severity === "Moderate" ? "text-amber-700" : "text-rose-700 font-bold");
             const row = document.createElement("tr");
-            row.className = "border-b border-slate-800 text-xs";
+            row.className = "border-b border-slate-100 text-xs";
             row.innerHTML = `
-                <td class="py-2.5 px-3 font-mono text-blue-400">${d.track_id}</td>
-                <td class="py-2.5 px-3 font-medium text-slate-200">${d.display_name} (${d.category_code})</td>
-                <td class="py-2.5 px-3 font-semibold ${sevColor}">${d.severity}</td>
-                <td class="py-2.5 px-3">${(d.confidence * 100).toFixed(0)}%</td>
-                <td class="py-2.5 px-3">${(d.relative_area * 100).toFixed(2)}%</td>
+                <td class="py-2.5 px-3 font-mono font-bold text-blue-700">${d.track_id}</td>
+                <td class="py-2.5 px-3 font-bold text-slate-800">${d.display_name} (${d.category_code})</td>
+                <td class="py-2.5 px-3 ${sevColor}">${d.severity}</td>
+                <td class="py-2.5 px-3 font-medium text-slate-700">${(d.confidence * 100).toFixed(0)}%</td>
+                <td class="py-2.5 px-3 font-medium text-slate-700">${(d.relative_area * 100).toFixed(2)}%</td>
             `;
             tbody.appendChild(row);
         });
@@ -314,12 +719,11 @@ function displayImageInspectionResults(data) {
         dupAlert.classList.add("hidden");
     }
 
-    // Store active inspection for export
     activeInspectionId = data.inspection_id;
 }
 
 // ==========================================
-// 4. VIDEO INSPECTION & MULTI-OBJECT TRACKING
+// 6. AUTHORITY END: VIDEO INSPECTION & TRACKING
 // ==========================================
 function setupVideoDropzone() {
     const dropzone = document.getElementById("video-dropzone");
@@ -327,23 +731,20 @@ function setupVideoDropzone() {
     if (!dropzone || !fileInput) return;
 
     dropzone.addEventListener("click", (e) => {
-        // Prevent re-triggering file picker if clicking video preview controls
         if (e.target.tagName.toLowerCase() === "video") return;
         fileInput.click();
     });
 
     dropzone.addEventListener("dragover", (e) => {
         e.preventDefault();
-        dropzone.classList.add("border-cyan-400", "bg-cyan-950/20");
+        dropzone.classList.add("border-cyan-600", "bg-cyan-50/50");
     });
-
     dropzone.addEventListener("dragleave", () => {
-        dropzone.classList.remove("border-cyan-400", "bg-cyan-950/20");
+        dropzone.classList.remove("border-cyan-600", "bg-cyan-50/50");
     });
-
     dropzone.addEventListener("drop", (e) => {
         e.preventDefault();
-        dropzone.classList.remove("border-cyan-400", "bg-cyan-950/20");
+        dropzone.classList.remove("border-cyan-600", "bg-cyan-50/50");
         if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
             fileInput.files = e.dataTransfer.files;
             handleVideoSelected(fileInput.files[0]);
@@ -369,13 +770,10 @@ function handleVideoSelected(file) {
 
     if (selectedName) selectedName.textContent = file.name;
     if (selectedMeta) {
-        selectedMeta.textContent = `Size: ${sizeMB} MB | Format: ${file.type || file.name.split('.').pop().toUpperCase()} | Status: Ready for AI analysis`;
+        selectedMeta.textContent = `Size: ${sizeMB} MB | Status: Ready for ByteTrack AI analysis`;
     }
     if (selectedInfo) selectedInfo.classList.remove("hidden");
-
-    if (btnText) {
-        btnText.textContent = `Process & Track Video (${sizeMB} MB)`;
-    }
+    if (btnText) btnText.textContent = `Process & Track Video (${sizeMB} MB)`;
 
     if (videoPreview) {
         try {
@@ -384,7 +782,7 @@ function handleVideoSelected(file) {
             videoPreview.classList.remove("hidden");
             videoPreview.load();
         } catch (e) {
-            console.warn("Could not preview video directly:", e);
+            console.warn("Video preview error:", e);
         }
     }
 
@@ -394,7 +792,7 @@ function handleVideoSelected(file) {
 async function runVideoInspection() {
     const fileInput = document.getElementById("video-file-input");
     if (!fileInput.files || fileInput.files.length === 0) {
-        alert("Please select or drop a road survey video file (.mp4, .avi, .mov, etc.) first.");
+        alert("Please select or drop a road survey video file first.");
         return;
     }
 
@@ -407,7 +805,7 @@ async function runVideoInspection() {
 
     btn.disabled = true;
     progressContainer.classList.remove("hidden");
-    if (progressText) progressText.textContent = `Uploading & analyzing video (${sizeMB} MB)...`;
+    if (progressText) progressText.textContent = `Uploading & tracking video (${sizeMB} MB)...`;
     if (progressSub) progressSub.textContent = "AI Processing";
 
     const strideSelect = document.getElementById("vid-stride");
@@ -423,26 +821,20 @@ async function runVideoInspection() {
     formData.append("stride", strideVal);
 
     try {
-        const res = await fetch("/api/inspect/video", {
-            method: "POST",
-            body: formData
-        });
-
+        const res = await fetch("/api/inspect/video", { method: "POST", body: formData });
         if (!res.ok) {
             const errData = await res.json().catch(() => ({}));
             throw new Error(errData.detail || `Server responded with HTTP ${res.status}`);
         }
-
         const data = await res.json();
-
         if (data.status === "success") {
             displayVideoInspectionResults(data);
         } else {
-            alert("Video processing warning: " + (data.detail || "Unknown error occurred"));
+            alert("Video warning: " + (data.detail || "Unknown error occurred"));
         }
     } catch (e) {
-        console.error("Video inspection error:", e);
-        alert(`Video processing failed: ${e.message}\n\nPlease verify the video format and retry.`);
+        console.error("Video error:", e);
+        alert(`Video processing failed: ${e.message}`);
     } finally {
         btn.disabled = false;
         progressContainer.classList.add("hidden");
@@ -465,27 +857,27 @@ function displayVideoInspectionResults(data) {
     tbody.innerHTML = "";
 
     data.tracked_defects.forEach(tr => {
-        let sevColor = tr.severity === "Minor" ? "text-emerald-400" : (tr.severity === "Moderate" ? "text-amber-400" : "text-rose-400");
+        let sevColor = tr.severity === "Minor" ? "text-emerald-700 font-bold" : (tr.severity === "Moderate" ? "text-amber-700 font-bold" : "text-rose-700 font-bold");
         const row = document.createElement("tr");
-        row.className = "border-b border-slate-800 text-xs";
+        row.className = "border-b border-slate-100 text-xs";
         row.innerHTML = `
-            <td class="py-2.5 px-3 font-mono font-bold text-cyan-400">${tr.track_id}</td>
-            <td class="py-2.5 px-3 font-medium text-slate-200">${tr.display_name}</td>
-            <td class="py-2.5 px-3 font-semibold ${sevColor}">${tr.severity}</td>
-            <td class="py-2.5 px-3">Frame ${tr.first_frame} &rarr; ${tr.last_frame} (${tr.duration_frames} f)</td>
-            <td class="py-2.5 px-3 font-semibold">${(tr.max_confidence * 100).toFixed(0)}%</td>
+            <td class="py-2.5 px-3 font-mono font-bold text-cyan-700">${tr.track_id}</td>
+            <td class="py-2.5 px-3 font-bold text-slate-800">${tr.display_name}</td>
+            <td class="py-2.5 px-3 ${sevColor}">${tr.severity}</td>
+            <td class="py-2.5 px-3 text-slate-600 font-medium">Frames ${tr.first_frame} &rarr; ${tr.last_frame} (${tr.duration_frames} f)</td>
+            <td class="py-2.5 px-3 font-bold text-slate-800">${(tr.max_confidence * 100).toFixed(0)}%</td>
         `;
         tbody.appendChild(row);
     });
 }
 
 // ==========================================
-// 5. INSPECTION HISTORY & MODAL
+// 7. INSPECTION HISTORY & MODAL
 // ==========================================
 async function loadInspectionHistory() {
     const tbody = document.getElementById("history-table-body");
     if (!tbody) return;
-    tbody.innerHTML = `<tr><td colspan="7" class="text-center py-8 text-slate-500">Loading survey records...</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="7" class="text-center py-8 text-slate-400">Loading survey records...</td></tr>`;
 
     try {
         const res = await fetch("/api/inspections?limit=50");
@@ -493,30 +885,30 @@ async function loadInspectionHistory() {
         tbody.innerHTML = "";
 
         if (data.inspections.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="7" class="text-center py-8 text-slate-500">No inspections recorded yet.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="7" class="text-center py-8 text-slate-400">No inspections recorded yet.</td></tr>`;
             return;
         }
 
         data.inspections.forEach(ins => {
-            let riskBadge = `<span class="px-2 py-0.5 rounded text-xs font-semibold bg-emerald-500/20 text-emerald-400">${ins.risk_score} (Low)</span>`;
-            if (ins.risk_level === "Moderate") riskBadge = `<span class="px-2 py-0.5 rounded text-xs font-semibold bg-amber-500/20 text-amber-400">${ins.risk_score} (Moderate)</span>`;
-            if (ins.risk_level === "High") riskBadge = `<span class="px-2 py-0.5 rounded text-xs font-semibold bg-orange-500/20 text-orange-400">${ins.risk_score} (High)</span>`;
-            if (ins.risk_level === "Critical") riskBadge = `<span class="px-2 py-0.5 rounded text-xs font-semibold bg-rose-500/20 text-rose-400">${ins.risk_score} (Critical)</span>`;
+            let riskBadge = `<span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">${ins.risk_score} (Low)</span>`;
+            if (ins.risk_level === "Moderate") riskBadge = `<span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200">${ins.risk_score} (Moderate)</span>`;
+            if (ins.risk_level === "High") riskBadge = `<span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-orange-50 text-orange-700 border border-orange-200">${ins.risk_score} (High)</span>`;
+            if (ins.risk_level === "Critical") riskBadge = `<span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-rose-50 text-rose-700 border border-rose-200">${ins.risk_score} (Critical)</span>`;
 
             const row = document.createElement("tr");
-            row.className = "border-b border-slate-800 hover:bg-slate-800/40 text-sm transition";
+            row.className = "hover:bg-slate-50 text-sm transition border-b border-slate-100";
             row.innerHTML = `
-                <td class="py-3 px-4 font-mono text-xs text-blue-400 font-semibold">${ins.code}</td>
-                <td class="py-3 px-4 font-medium text-slate-200">${ins.road_name}</td>
-                <td class="py-3 px-4 text-xs text-slate-400">${ins.upload_time ? ins.upload_time.slice(0, 10) : 'N/A'}</td>
-                <td class="py-3 px-4 uppercase text-xs font-mono text-slate-400">${ins.media_type}</td>
-                <td class="py-3 px-4 font-bold">${ins.unique_defects_count}</td>
+                <td class="py-3 px-4 font-mono text-xs text-blue-700 font-bold">${ins.code}</td>
+                <td class="py-3 px-4 font-bold text-slate-800">${ins.road_name}</td>
+                <td class="py-3 px-4 text-xs text-slate-500">${ins.upload_time ? ins.upload_time.slice(0, 10) : 'N/A'}</td>
+                <td class="py-3 px-4 uppercase text-xs font-bold font-mono text-slate-500">${ins.media_type}</td>
+                <td class="py-3 px-4 font-black text-slate-900">${ins.unique_defects_count}</td>
                 <td class="py-3 px-4">${riskBadge}</td>
                 <td class="py-3 px-4 text-right space-x-2">
-                    <button onclick="viewInspectionDetail(${ins.id})" class="px-2.5 py-1 bg-blue-600 hover:bg-blue-500 text-xs font-semibold text-white rounded">
+                    <button onclick="viewInspectionDetail(${ins.id})" class="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-xs font-bold text-white rounded-lg shadow-sm">
                         View
                     </button>
-                    <button onclick="downloadReport(${ins.id}, 'pdf')" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-300 rounded border border-slate-700">
+                    <button onclick="downloadReport(${ins.id}, 'pdf')" class="px-2.5 py-1 bg-white hover:bg-slate-50 text-xs font-bold text-slate-700 rounded-lg border border-slate-300 shadow-sm">
                         PDF
                     </button>
                 </td>
@@ -543,18 +935,17 @@ async function viewInspectionDetail(inspId) {
         tbody.innerHTML = "";
         ins.defects.forEach(d => {
             const row = document.createElement("tr");
-            row.className = "border-b border-slate-800 text-xs";
+            row.className = "border-b border-slate-100 text-xs";
             row.innerHTML = `
-                <td class="py-2 px-3 font-mono text-blue-400">${d.track_id}</td>
-                <td class="py-2 px-3 font-medium text-slate-200">${d.class_name}</td>
-                <td class="py-2 px-3 font-semibold">${d.severity}</td>
-                <td class="py-2 px-3">${(d.confidence * 100).toFixed(0)}%</td>
-                <td class="py-2 px-3">${d.verification_status}</td>
+                <td class="py-2.5 px-3 font-mono font-bold text-blue-700">${d.track_id}</td>
+                <td class="py-2.5 px-3 font-bold text-slate-800">${d.class_name}</td>
+                <td class="py-2.5 px-3 font-semibold text-slate-700">${d.severity}</td>
+                <td class="py-2.5 px-3 text-slate-700">${(d.confidence * 100).toFixed(0)}%</td>
+                <td class="py-2.5 px-3 font-bold text-emerald-700">${d.verification_status}</td>
             `;
             tbody.appendChild(row);
         });
 
-        // Set export buttons
         document.getElementById("btn-modal-pdf").onclick = () => downloadReport(ins.id, "pdf");
         document.getElementById("btn-modal-csv").onclick = () => downloadReport(ins.id, "csv");
         document.getElementById("btn-modal-json").onclick = () => downloadReport(ins.id, "json");
@@ -575,12 +966,12 @@ function downloadReport(inspId, format) {
 }
 
 // ==========================================
-// 6. DUPLICATE DAMAGE DETECTION
+// 8. DUPLICATE DAMAGE DETECTION
 // ==========================================
 async function loadDuplicates() {
     const container = document.getElementById("duplicates-container");
     if (!container) return;
-    container.innerHTML = `<div class="p-8 text-center text-slate-500">Scanning for cross-inspection duplicates...</div>`;
+    container.innerHTML = `<div class="p-8 text-center text-slate-400 font-medium">Scanning for cross-inspection duplicates...</div>`;
 
     try {
         const res = await fetch("/api/duplicates");
@@ -589,9 +980,9 @@ async function loadDuplicates() {
 
         if (data.duplicates.length === 0) {
             container.innerHTML = `
-                <div class="glass-card p-8 text-center">
-                    <div class="text-emerald-400 font-bold text-lg mb-1">No Duplicate Defects Pending</div>
-                    <div class="text-sm text-slate-400">All uploaded inspections correspond to unique physical coordinates.</div>
+                <div class="glass-card p-8 text-center bg-white border border-slate-200">
+                    <div class="text-emerald-700 font-extrabold text-lg mb-1">No Duplicate Defects Pending</div>
+                    <div class="text-sm text-slate-500">All uploaded inspections correspond to unique physical coordinates.</div>
                 </div>
             `;
             return;
@@ -599,37 +990,37 @@ async function loadDuplicates() {
 
         data.duplicates.forEach(dup => {
             const card = document.createElement("div");
-            card.className = "glass-card p-5 mb-4 border-l-4 border-amber-500";
+            card.className = "glass-card p-5 mb-4 border-l-4 border-amber-500 bg-white shadow-sm";
             card.innerHTML = `
                 <div class="flex justify-between items-start mb-3">
                     <div>
-                        <span class="px-2 py-0.5 rounded text-xs font-semibold bg-amber-500/20 text-amber-400 uppercase">Duplicate Alert</span>
-                        <h4 class="text-base font-bold text-slate-200 mt-1">Spatial Proximity: ${dup.spatial_distance_m} meters</h4>
+                        <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-50 text-amber-800 border border-amber-200 uppercase">Duplicate Alert</span>
+                        <h4 class="text-base font-bold text-slate-900 mt-1">Spatial Proximity: ${dup.spatial_distance_m} meters</h4>
                     </div>
                     <div class="text-right">
-                        <span class="text-xs text-slate-400">Visual Hash Match:</span>
-                        <div class="text-lg font-bold text-emerald-400">${dup.visual_similarity_pct}%</div>
+                        <span class="text-xs text-slate-500 font-semibold">Visual Hash Match:</span>
+                        <div class="text-lg font-black text-emerald-700">${dup.visual_similarity_pct}%</div>
                     </div>
                 </div>
 
-                <div class="grid grid-cols-2 gap-4 bg-slate-900/60 p-3 rounded-lg mb-4 text-xs">
+                <div class="grid grid-cols-2 gap-4 bg-slate-50 p-3.5 rounded-xl mb-4 text-xs border border-slate-200">
                     <div>
-                        <div class="text-slate-400 font-semibold mb-1">New Defect Submission:</div>
-                        <div class="font-mono text-cyan-400">${dup.new_defect.track_id} (${dup.new_defect.category})</div>
-                        <div class="text-slate-300">Severity: ${dup.new_defect.severity}</div>
+                        <div class="text-slate-500 font-bold mb-1">New Defect Submission:</div>
+                        <div class="font-mono text-cyan-700 font-bold">${dup.new_defect.track_id} (${dup.new_defect.category})</div>
+                        <div class="text-slate-700 font-medium">Severity: ${dup.new_defect.severity}</div>
                     </div>
                     <div>
-                        <div class="text-slate-400 font-semibold mb-1">Existing Historical Defect:</div>
-                        <div class="font-mono text-blue-400">${dup.existing_defect.track_id} (${dup.existing_defect.category})</div>
-                        <div class="text-slate-300">Severity: ${dup.existing_defect.severity}</div>
+                        <div class="text-slate-500 font-bold mb-1">Existing Historical Defect:</div>
+                        <div class="font-mono text-blue-700 font-bold">${dup.existing_defect.track_id} (${dup.existing_defect.category})</div>
+                        <div class="text-slate-700 font-medium">Severity: ${dup.existing_defect.severity}</div>
                     </div>
                 </div>
 
                 <div class="flex justify-end space-x-3">
-                    <button onclick="resolveDuplicateMatch(${dup.match_id}, 'Dismissed')" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-300 rounded border border-slate-700">
+                    <button onclick="resolveDuplicateMatch(${dup.match_id}, 'Dismissed')" class="px-3 py-1.5 bg-white hover:bg-slate-50 text-xs font-bold text-slate-700 rounded-lg border border-slate-300 shadow-sm">
                         Dismiss (Different Defects)
                     </button>
-                    <button onclick="resolveDuplicateMatch(${dup.match_id}, 'Merged')" class="px-4 py-1.5 bg-amber-600 hover:bg-amber-500 text-xs font-semibold text-white rounded">
+                    <button onclick="resolveDuplicateMatch(${dup.match_id}, 'Merged')" class="px-4 py-1.5 bg-amber-600 hover:bg-amber-700 text-xs font-bold text-white rounded-lg shadow-sm">
                         Confirm & Merge Duplicate
                     </button>
                 </div>
@@ -659,7 +1050,7 @@ async function resolveDuplicateMatch(matchId, action) {
 }
 
 // ==========================================
-// 7. REPAIR LIFECYCLE MANAGEMENT
+// 9. REPAIR LIFECYCLE MANAGEMENT
 // ==========================================
 async function loadRepairs() {
     const colReported = document.getElementById("repair-col-reported");
@@ -677,21 +1068,21 @@ async function loadRepairs() {
 
         data.repairs.forEach(rep => {
             const card = document.createElement("div");
-            card.className = "glass-card p-3.5 mb-3 text-xs";
+            card.className = "glass-card p-4 mb-3 text-xs bg-white shadow-sm border border-slate-200";
             card.innerHTML = `
                 <div class="flex justify-between items-start mb-2">
-                    <span class="font-bold text-slate-200">#REP-${rep.id}</span>
-                    <span class="px-2 py-0.5 rounded font-semibold ${rep.priority === 'Emergency' ? 'bg-rose-500/20 text-rose-400' : 'bg-blue-500/20 text-blue-400'}">
+                    <span class="font-mono font-bold text-slate-900">#REP-${rep.id}</span>
+                    <span class="px-2 py-0.5 rounded-full font-bold ${rep.priority === 'Emergency' ? 'bg-rose-50 text-rose-700 border border-rose-200' : 'bg-blue-50 text-blue-700 border border-blue-200'}">
                         ${rep.priority}
                     </span>
                 </div>
-                <div class="text-slate-300 font-medium mb-1">${rep.assigned_authority}</div>
-                ${rep.assigned_contractor ? `<div class="text-slate-400 mb-2">Contractor: ${rep.assigned_contractor}</div>` : ''}
-                <div class="text-slate-400 mb-3">${rep.remarks || 'Routine maintenance dispatch.'}</div>
+                <div class="text-slate-800 font-bold mb-1">${rep.assigned_authority}</div>
+                ${rep.assigned_contractor ? `<div class="text-slate-600 mb-2 font-medium">Contractor: ${rep.assigned_contractor}</div>` : ''}
+                <div class="text-slate-500 mb-3">${rep.remarks || 'Routine maintenance dispatch.'}</div>
 
-                <div class="flex justify-between items-center pt-2 border-t border-slate-800">
-                    <span class="text-slate-500 font-mono">${rep.created_at ? rep.created_at.slice(0, 10) : ''}</span>
-                    <button onclick="promptUpdateRepair(${rep.id})" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-blue-400 font-semibold rounded border border-slate-700">
+                <div class="flex justify-between items-center pt-2.5 border-t border-slate-100">
+                    <span class="text-slate-400 font-mono text-[11px]">${rep.created_at ? rep.created_at.slice(0, 10) : ''}</span>
+                    <button onclick="promptUpdateRepair(${rep.id})" class="px-2.5 py-1 bg-white hover:bg-slate-50 text-blue-700 font-bold rounded-lg border border-slate-300 shadow-sm">
                         Update Status
                     </button>
                 </div>
@@ -716,7 +1107,7 @@ async function promptUpdateRepair(repId) {
 
     const formData = new FormData();
     formData.append("status", nextStatus);
-    formData.append("remarks", "Updated via Municipal Dispatch Portal");
+    formData.append("remarks", "Updated via Municipal Dispatch Command");
 
     try {
         const res = await fetch(`/api/repairs/${repId}/update`, {
@@ -734,12 +1125,12 @@ async function promptUpdateRepair(repId) {
 }
 
 // ==========================================
-// 8. MANUAL VERIFICATION PORTAL
+// 10. MANUAL VERIFICATION PORTAL
 // ==========================================
 async function loadUnverifiedDefects() {
     const tbody = document.getElementById("verification-table-body");
     if (!tbody) return;
-    tbody.innerHTML = `<tr><td colspan="7" class="text-center py-6 text-slate-500">Loading unverified detections...</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="7" class="text-center py-6 text-slate-400">Loading unverified detections...</td></tr>`;
 
     try {
         const res = await fetch("/api/defects?limit=50");
@@ -748,24 +1139,24 @@ async function loadUnverifiedDefects() {
 
         const unverified = data.defects.filter(d => d.verification_status === "Unverified");
         if (unverified.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="7" class="text-center py-6 text-emerald-400 font-semibold">All defect detections have been verified!</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="7" class="text-center py-6 text-emerald-700 font-bold">All defect detections have been audited & verified!</td></tr>`;
             return;
         }
 
         unverified.forEach(d => {
             const row = document.createElement("tr");
-            row.className = "border-b border-slate-800 text-xs";
+            row.className = "border-b border-slate-100 text-xs hover:bg-slate-50";
             row.innerHTML = `
-                <td class="py-3 px-4 font-mono font-bold text-blue-400">${d.track_id}</td>
-                <td class="py-3 px-4 font-medium text-slate-200">${d.class_name} (${d.category_code})</td>
-                <td class="py-3 px-4 font-semibold">${d.severity}</td>
-                <td class="py-3 px-4">${(d.confidence * 100).toFixed(0)}%</td>
-                <td class="py-3 px-4 text-slate-400">${d.latitude ? `${d.latitude}, ${d.longitude}` : 'No GPS'}</td>
+                <td class="py-3 px-4 font-mono font-bold text-blue-700">${d.track_id}</td>
+                <td class="py-3 px-4 font-bold text-slate-800">${d.class_name} (${d.category_code})</td>
+                <td class="py-3 px-4 font-bold ${d.severity === 'Severe' ? 'text-rose-700' : (d.severity === 'Moderate' ? 'text-amber-700' : 'text-emerald-700')}">${d.severity}</td>
+                <td class="py-3 px-4 font-bold text-slate-800">${(d.confidence * 100).toFixed(0)}%</td>
+                <td class="py-3 px-4 text-slate-500 font-mono">${d.latitude ? `${d.latitude}, ${d.longitude}` : 'No GPS'}</td>
                 <td class="py-3 px-4 text-right space-x-2">
-                    <button onclick="submitDefectVerification(${d.id}, 'Verified')" class="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded">
+                    <button onclick="submitDefectVerification(${d.id}, 'Verified')" class="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg shadow-sm">
                         Approve
                     </button>
-                    <button onclick="submitDefectVerification(${d.id}, 'Rejected')" class="px-3 py-1 bg-rose-600/30 hover:bg-rose-600 text-rose-300 font-semibold rounded border border-rose-500/40">
+                    <button onclick="submitDefectVerification(${d.id}, 'Rejected')" class="px-3 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold rounded-lg border border-rose-200">
                         Reject False Positive
                     </button>
                 </td>
@@ -780,7 +1171,7 @@ async function loadUnverifiedDefects() {
 async function submitDefectVerification(defectId, action) {
     const formData = new FormData();
     formData.append("action", action);
-    formData.append("reviewer", "Municipal Audit Engineer");
+    formData.append("reviewer", "Er. Rajesh Verma (Chief Municipal Engineer)");
 
     try {
         const res = await fetch(`/api/defects/${defectId}/verify`, {
@@ -797,7 +1188,7 @@ async function submitDefectVerification(defectId, action) {
 }
 
 // ==========================================
-// 9. MODEL BENCHMARK METRICS
+// 11. MODEL BENCHMARK METRICS
 // ==========================================
 async function loadBenchmarkMetrics() {
     try {
@@ -809,15 +1200,15 @@ async function loadBenchmarkMetrics() {
 
         for (const [mname, mdata] of Object.entries(data)) {
             const row = document.createElement("tr");
-            row.className = "border-b border-slate-800 text-xs";
+            row.className = "border-b border-slate-100 text-xs hover:bg-slate-50";
             row.innerHTML = `
-                <td class="py-3 px-4 font-bold text-slate-200">${mname}</td>
-                <td class="py-3 px-4 font-mono text-slate-400">${mdata.model_file}</td>
-                <td class="py-3 px-4 font-bold text-emerald-400">${(mdata.precision * 100).toFixed(1)}%</td>
-                <td class="py-3 px-4 font-bold text-blue-400">${(mdata.recall * 100).toFixed(1)}%</td>
-                <td class="py-3 px-4 font-bold">${mdata.f1_score.toFixed(4)}</td>
-                <td class="py-3 px-4 font-bold text-cyan-400">${mdata.map50.toFixed(4)}</td>
-                <td class="py-3 px-4">${mdata.avg_latency_ms} ms (${mdata.fps} FPS)</td>
+                <td class="py-3 px-4 font-bold text-slate-900">${mname}</td>
+                <td class="py-3 px-4 font-mono text-slate-500">${mdata.model_file}</td>
+                <td class="py-3 px-4 font-bold text-emerald-700">${(mdata.precision * 100).toFixed(1)}%</td>
+                <td class="py-3 px-4 font-bold text-blue-700">${(mdata.recall * 100).toFixed(1)}%</td>
+                <td class="py-3 px-4 font-bold text-slate-900">${mdata.f1_score.toFixed(4)}</td>
+                <td class="py-3 px-4 font-bold text-cyan-700">${mdata.map50.toFixed(4)}</td>
+                <td class="py-3 px-4 text-slate-600 font-medium">${mdata.avg_latency_ms} ms (${mdata.fps} FPS)</td>
             `;
             tbody.appendChild(row);
         }

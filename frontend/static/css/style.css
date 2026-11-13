@@ -1,79 +1,87 @@
-/* ROADVISION AI - Custom Styles & Glassmorphism Theme */
+/* ROADVISION AI - Enterprise White Theme & Role-Based Portal Styling */
 
 :root {
-    --bg-dark: #0b0f17;
-    --card-bg: rgba(18, 24, 38, 0.85);
-    --card-border: rgba(255, 255, 255, 0.08);
-    --accent-blue: #3b82f6;
-    --accent-cyan: #06b6d4;
-    --accent-emerald: #10b981;
-    --accent-amber: #f59e0b;
-    --accent-rose: #ef4444;
+    --bg-main: #f8fafc;
+    --bg-white: #ffffff;
+    --card-bg: #ffffff;
+    --card-border: #e2e8f0;
+    --text-primary: #0f172a;
+    --text-secondary: #475569;
+    --text-muted: #64748b;
+    --accent-blue: #2563eb;
+    --accent-indigo: #4f46e5;
+    --accent-emerald: #059669;
+    --accent-amber: #d97706;
+    --accent-rose: #dc2626;
+    --accent-cyan: #0891b2;
 }
 
 body {
-    background-color: var(--bg-dark);
-    color: #f1f5f9;
+    background-color: var(--bg-main);
+    color: var(--text-primary);
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     overflow-x: hidden;
 }
 
-/* Glassmorphism Cards */
+/* Crisp Clean White Cards */
 .glass-card {
-    background: var(--card-bg);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
+    background: var(--bg-white);
     border: 1px solid var(--card-border);
     border-radius: 12px;
-    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.05);
+    transition: all 0.2s ease-in-out;
+}
+
+.glass-card:hover {
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.07), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
 }
 
 .glass-nav {
-    background: rgba(11, 15, 23, 0.92);
-    backdrop-filter: blur(16px);
+    background: rgba(255, 255, 255, 0.96);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
     border-bottom: 1px solid var(--card-border);
 }
 
 .glass-sidebar {
-    background: rgba(14, 20, 32, 0.95);
-    backdrop-filter: blur(16px);
+    background: var(--bg-white);
     border-right: 1px solid var(--card-border);
 }
 
-/* Custom Scrollbars */
+/* Custom Clean Scrollbars */
 ::-webkit-scrollbar {
     width: 6px;
     height: 6px;
 }
 ::-webkit-scrollbar-track {
-    background: #0b0f17;
+    background: #f1f5f9;
 }
 ::-webkit-scrollbar-thumb {
-    background: #273549;
+    background: #cbd5e1;
     border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-    background: #3b82f6;
+    background: #94a3b8;
 }
 
 /* Risk Meters */
 .risk-meter {
     height: 8px;
     border-radius: 9999px;
-    background: #1e293b;
+    background: #e2e8f0;
     overflow: hidden;
 }
 
 /* Pulse Glows */
 .pulse-glow-critical {
-    box-shadow: 0 0 15px rgba(239, 68, 68, 0.4);
-    animation: pulseCritical 2s infinite;
+    box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.5);
+    animation: pulseCriticalLight 2s infinite;
 }
 
-@keyframes pulseCritical {
-    0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.5); }
-    70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
-    100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+@keyframes pulseCriticalLight {
+    0% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.4); }
+    70% { box-shadow: 0 0 0 8px rgba(220, 38, 38, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0); }
 }
 
 /* Interactive Tabs */
@@ -82,31 +90,61 @@ body {
 }
 .tab-content.active {
     display: block;
-    animation: fadeIn 0.25s ease-in-out;
+    animation: fadeIn 0.2s ease-in-out;
 }
 
 @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(4px); }
+    from { opacity: 0; transform: translateY(3px); }
     to { opacity: 1; transform: translateY(0); }
 }
 
-/* Leaflet Map overrides for dark mode */
+/* Leaflet Map overrides for Clean White Theme */
 .leaflet-container {
-    background: #0b0f17 !important;
+    background: #f8fafc !important;
     font-family: inherit !important;
 }
 .leaflet-popup-content-wrapper {
-    background: #1e293b !important;
-    color: #f8fafc !important;
-    border-radius: 8px !important;
-    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    background: #ffffff !important;
+    color: #0f172a !important;
+    border-radius: 10px !important;
+    border: 1px solid #e2e8f0 !important;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1) !important;
 }
 .leaflet-popup-tip {
-    background: #1e293b !important;
+    background: #ffffff !important;
 }
 
-/* Drag and drop zone */
+/* Drag and Drop Zone */
 .dropzone-active {
-    border-color: #3b82f6 !important;
-    background: rgba(59, 130, 246, 0.1) !important;
+    border-color: #2b66e3 !important;
+    background: #eff6ff !important;
+}
+
+/* Custom Map Pins */
+.custom-map-pin {
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+}
+
+/* Role Badges */
+.badge-citizen {
+    background: #ecfdf5;
+    color: #047857;
+    border: 1px solid #a7f3d0;
+}
+
+.badge-authority {
+    background: #eff6ff;
+    color: #1d4ed8;
+    border: 1px solid #bfdbfe;
+}
+
+/* Table Hover */
+tr.table-row-hover:hover {
+    background-color: #f8fafc;
+}
+
+/* Modal styling */
+.modal-overlay {
+    background-color: rgba(15, 23, 42, 0.45);
+    backdrop-filter: blur(4px);
 }
