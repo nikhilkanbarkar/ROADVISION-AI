@@ -1,0 +1,196 @@
+{
+  "evaluation_timestamp": "2026-11-13 14:11:00",
+  "validation_metrics": {
+    "precision": 0.9062,
+    "recall": 0.6,
+    "map50": 0.7908,
+    "map50_95": 0.4721
+  },
+  "threshold_sweep": [
+    {
+      "conf": 0.1,
+      "tp": 3,
+      "fp": 31,
+      "fn": 2,
+      "precision": 0.0882,
+      "recall": 0.6,
+      "f1": 0.1538,
+      "latency_ms": 106.06,
+      "fps": 9.4
+    },
+    {
+      "conf": 0.15,
+      "tp": 3,
+      "fp": 20,
+      "fn": 2,
+      "precision": 0.1304,
+      "recall": 0.6,
+      "f1": 0.2143,
+      "latency_ms": 85.43,
+      "fps": 11.7
+    },
+    {
+      "conf": 0.2,
+      "tp": 3,
+      "fp": 17,
+      "fn": 2,
+      "precision": 0.15,
+      "recall": 0.6,
+      "f1": 0.24,
+      "latency_ms": 91.66,
+      "fps": 10.9
+    },
+    {
+      "conf": 0.25,
+      "tp": 3,
+      "fp": 16,
+      "fn": 2,
+      "precision": 0.1579,
+      "recall": 0.6,
+      "f1": 0.25,
+      "latency_ms": 101.53,
+      "fps": 9.8
+    },
+    {
+      "conf": 0.3,
+      "tp": 3,
+      "fp": 13,
+      "fn": 2,
+      "precision": 0.1875,
+      "recall": 0.6,
+      "f1": 0.2857,
+      "latency_ms": 101.82,
+      "fps": 9.8
+    },
+    {
+      "conf": 0.35,
+      "tp": 3,
+      "fp": 12,
+      "fn": 2,
+      "precision": 0.2,
+      "recall": 0.6,
+      "f1": 0.3,
+      "latency_ms": 86.36,
+      "fps": 11.6
+    },
+    {
+      "conf": 0.4,
+      "tp": 3,
+      "fp": 12,
+      "fn": 2,
+      "precision": 0.2,
+      "recall": 0.6,
+      "f1": 0.3,
+      "latency_ms": 88.04,
+      "fps": 11.4
+    },
+    {
+      "conf": 0.45,
+      "tp": 3,
+      "fp": 10,
+      "fn": 2,
+      "precision": 0.2308,
+      "recall": 0.6,
+      "f1": 0.3333,
+      "latency_ms": 101.81,
+      "fps": 9.8
+    },
+    {
+      "conf": 0.5,
+      "tp": 3,
+      "fp": 10,
+      "fn": 2,
+      "precision": 0.2308,
+      "recall": 0.6,
+      "f1": 0.3333,
+      "latency_ms": 87.96,
+      "fps": 11.4
+    },
+    {
+      "conf": 0.55,
+      "tp": 3,
+      "fp": 10,
+      "fn": 2,
+      "precision": 0.2308,
+      "recall": 0.6,
+      "f1": 0.3333,
+      "latency_ms": 85.95,
+      "fps": 11.6
+    },
+    {
+      "conf": 0.6,
+      "tp": 3,
+      "fp": 10,
+      "fn": 2,
+      "precision": 0.2308,
+      "recall": 0.6,
+      "f1": 0.3333,
+      "latency_ms": 84.79,
+      "fps": 11.8
+    }
+  ],
+  "optimal_operating_point": {
+    "conf": 0.45,
+    "tp": 3,
+    "fp": 10,
+    "fn": 2,
+    "precision": 0.2308,
+    "recall": 0.6,
+    "f1": 0.3333,
+    "latency_ms": 101.81,
+    "fps": 9.8
+  },
+  "model_comparison": {
+    "baseline_rdd2022_yolov8m": {
+      "name": "Baseline YOLOv8m (Pre-trained RDD2022)",
+      "precision": 1.0,
+      "recall": 0.2,
+      "f1": 0.3333,
+      "latency_ms": 480.76,
+      "fps": 2.1,
+      "size_mb": 49.62
+    },
+    "roadvision_finetuned_v2": {
+      "name": "ROADVISION Fine-Tuned YOLOv8s (Best Checkpoint)",
+      "precision": 0.2308,
+      "recall": 0.6,
+      "f1": 0.3333,
+      "optimal_conf": 0.45,
+      "latency_ms": 101.81,
+      "fps": 9.8,
+      "size_mb": 21.45
+    }
+  },
+  "edge_case_tests": [
+    {
+      "image": "citizen_report_nh48.jpg",
+      "detections_count": 0,
+      "detected_classes": [],
+      "latency_ms": 237.04
+    },
+    {
+      "image": "nh48_survey_jan.jpg",
+      "detections_count": 0,
+      "detected_classes": [],
+      "latency_ms": 158.16
+    },
+    {
+      "image": "nh48_survey_post_repair.jpg",
+      "detections_count": 0,
+      "detected_classes": [],
+      "latency_ms": 161.92
+    },
+    {
+      "image": "ring_road_nov.jpg",
+      "detections_count": 0,
+      "detected_classes": [],
+      "latency_ms": 137.73
+    },
+    {
+      "image": "ring_road_oct.jpg",
+      "detections_count": 0,
+      "detected_classes": [],
+      "latency_ms": 140.84
+    }
+  ]
+}

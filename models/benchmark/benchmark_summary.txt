@@ -1,0 +1,30 @@
+ROADVISION AI - MODEL BENCHMARK EVALUATION REPORT
+===================================================
+
+Model: ROADVISION-YOLOv8m-RDD2022
+  Checkpoint: roadvision_rdd2022_yolov8m.pt
+  Precision:  100.00%
+  Recall:     20.00%
+  F1 Score:   0.3333
+  mAP@50:     0.5700
+  Latency:    993.85 ms (1.0 FPS)
+  TP: 1 | FP: 0 | FN: 4
+
+Model: YOLOv8n-Pothole-Seg
+  Checkpoint: keremberke_yolov8n_pothole.pt
+  Precision:  66.67%
+  Recall:     80.00%
+  F1 Score:   0.7273
+  mAP@50:     0.6967
+  Latency:    114.72 ms (8.7 FPS)
+  TP: 4 | FP: 2 | FN: 1
+
+Model: YOLOv8s-RDD2022
+  Checkpoint: dronefreak_rdd2022_yolov8s.pt
+  Precision:  0.00%
+  Recall:     0.00%
+  F1 Score:   0.0000
+  mAP@50:     0.0000
+  Latency:    235.64 ms (4.2 FPS)
+  TP: 0 | FP: 0 | FN: 5
+

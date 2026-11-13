@@ -1,0 +1,47 @@
+{
+  "ROADVISION-YOLOv8m-RDD2022": {
+    "model_name": "ROADVISION-YOLOv8m-RDD2022",
+    "model_file": "roadvision_rdd2022_yolov8m.pt",
+    "true_positives": 1,
+    "false_positives": 0,
+    "false_negatives": 4,
+    "precision": 1.0,
+    "recall": 0.2,
+    "f1_score": 0.3333,
+    "map50": 0.57,
+    "avg_latency_ms": 993.85,
+    "fps": 1.0,
+    "test_images_count": 5,
+    "ground_truth_potholes": 5
+  },
+  "YOLOv8n-Pothole-Seg": {
+    "model_name": "YOLOv8n-Pothole-Seg",
+    "model_file": "keremberke_yolov8n_pothole.pt",
+    "true_positives": 4,
+    "false_positives": 2,
+    "false_negatives": 1,
+    "precision": 0.6667,
+    "recall": 0.8,
+    "f1_score": 0.7273,
+    "map50": 0.6967,
+    "avg_latency_ms": 114.72,
+    "fps": 8.7,
+    "test_images_count": 5,
+    "ground_truth_potholes": 5
+  },
+  "YOLOv8s-RDD2022": {
+    "model_name": "YOLOv8s-RDD2022",
+    "model_file": "dronefreak_rdd2022_yolov8s.pt",
+    "true_positives": 0,
+    "false_positives": 0,
+    "false_negatives": 5,
+    "precision": 0.0,
+    "recall": 0.0,
+    "f1_score": 0.0,
+    "map50": 0.0,
+    "avg_latency_ms": 235.64,
+    "fps": 4.2,
+    "test_images_count": 5,
+    "ground_truth_potholes": 5
+  }
+}

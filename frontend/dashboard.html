@@ -1,0 +1,1140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#10233f">
+<title>RoadGuard AI — Municipal Operations & AI Damage Dashboard</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css">
+<style>
+:root{
+  --navy:#10233f;--navy2:#18385f;--ink:#17243a;--muted:#718096;--bg:#f3f6fb;--panel:#fff;
+  --line:#e5ebf3;--accent:#21b8a6;--accent2:#d9fbf5;--shadow:0 12px 34px rgba(20,42,72,.08);
+  --red:#e55353;--orange:#ed913e;--yellow:#d8ae27;--green:#20a56b;
+}
+[data-theme="dark"]{
+  --ink:#eaf0f8;--muted:#9aabc0;--bg:#0c1728;--panel:#14243a;--line:#263a55;
+  --navy:#0a1423;--navy2:#132b48;--accent2:#123d3b;--shadow:0 12px 34px rgba(0,0,0,.22);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0;
+  font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+  background:var(--bg);
+  color:var(--ink);
+  transition:background .2s,color .2s;
+}
+button,input,select{font:inherit}
+button{cursor:pointer}
+.topbar{
+  height:72px;background:var(--panel);border-bottom:1px solid var(--line);
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 clamp(16px,4vw,56px);position:sticky;top:0;z-index:1000;
+}
+.brand{
+  display:flex;align-items:center;gap:11px;font-weight:850;
+  letter-spacing:-.5px;font-size:19px;color:var(--ink);white-space:nowrap;
+  text-decoration:none;
+}
+.brand-mark{
+  width:38px;height:38px;border-radius:12px;
+  background:linear-gradient(135deg,#21b8a6,#1b8b9d);
+  display:grid;place-items:center;color:white;font-size:20px;
+  box-shadow:0 7px 18px #21b8a644;
+}
+.portal-tag{
+  font-size:11px;font-weight:700;color:var(--accent);
+  background:var(--accent2);padding:3px 8px;border-radius:6px;
+  margin-left:4px;
+}
+.nav{display:flex;align-items:center;gap:4px}
+.nav button,.nav a{
+  border:0;background:transparent;color:var(--muted);
+  padding:10px 12px;border-radius:10px;font-size:13px;font-weight:650;
+  text-decoration:none;display:inline-flex;align-items:center;gap:6px;
+}
+.nav button:hover,.nav button.active{background:var(--accent2);color:var(--accent)}
+.nav a:hover{background:var(--accent2);color:var(--accent)}
+.top-actions{display:flex;align-items:center;gap:8px}
+.theme-btn{
+  font-size:18px;border:1px solid var(--line);width:40px;height:40px;
+  padding:0;background:transparent;color:var(--muted);border-radius:10px;
+  display:grid;place-items:center;
+}
+.mobile-menu{display:none}
+.container{max-width:1280px;margin:auto;padding:26px clamp(16px,4vw,42px) 60px}
+.page{display:none;animation:fade .25s ease}
+.page.active{display:block}
+@keyframes fade{from{opacity:.3;transform:translateY(5px)}to{opacity:1;transform:none}}
+
+.eyebrow{color:var(--accent);font-weight:800;text-transform:uppercase;letter-spacing:1.6px;font-size:11px}
+.page-title{display:flex;justify-content:space-between;align-items:start;gap:16px;margin:5px 0 22px}
+.page-title h1{font-size:28px;margin:4px 0;letter-spacing:-1px}
+.page-title p{margin:0;color:var(--muted);font-size:13px}
+
+.btn{
+  border:0;border-radius:11px;padding:10px 16px;font-weight:750;font-size:13px;
+  transition:.18s;display:inline-flex;align-items:center;justify-content:center;
+  gap:8px;text-decoration:none;
+}
+.btn:hover{transform:translateY(-2px);filter:brightness(1.04)}
+.btn-primary{background:var(--accent);color:#062d2c;box-shadow:0 7px 18px #21b8a633}
+.btn-white{background:white;color:#10233f}
+.btn-outline{background:transparent;color:inherit;border:1px solid var(--line)}
+.btn-light{background:var(--accent2);color:var(--accent)}
+.btn-danger{background:#fff0ef;color:#c83c3c}
+.btn-sm{padding:7px 11px;font-size:12px}
+
+.card,.stat{
+  background:var(--panel);border:1px solid var(--line);border-radius:17px;
+  padding:19px;box-shadow:var(--shadow);
+}
+.stat-top{display:flex;justify-content:space-between;align-items:center;color:var(--muted);font-size:12px;font-weight:700}
+.stat-icon{
+  width:36px;height:36px;display:grid;place-items:center;
+  border-radius:11px;background:var(--accent2);color:var(--accent);font-size:17px;
+}
+.stat strong{display:block;font-size:28px;letter-spacing:-1px;margin:10px 0 2px}
+.stat small{color:var(--muted);font-size:11px}
+
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin:18px 0}
+.metrics-row{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin:16px 0}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:17px}
+.grid-1-2{display:grid;grid-template-columns:1fr 1.6fr;gap:17px}
+
+.field{display:flex;flex-direction:column;gap:7px;margin:11px 0}
+.field label{font-size:12px;font-weight:750;color:var(--muted)}
+.field input,.field select{
+  width:100%;background:var(--bg);color:var(--ink);
+  border:1px solid var(--line);border-radius:10px;padding:10px 12px;outline:none;
+}
+.field input:focus,.field select:focus{border-color:var(--accent);box-shadow:0 0 0 3px #21b8a61c}
+
+.upload-zone{
+  border:2px dashed #9bb1c8;border-radius:15px;padding:26px 16px;
+  text-align:center;background:var(--bg);transition:.2s;cursor:pointer;
+}
+.upload-zone.drag{border-color:var(--accent);background:var(--accent2)}
+.upload-zone .upload-icon{font-size:32px;margin-bottom:6px}
+.upload-zone h3{margin:6px 0 3px;font-size:15px}
+.upload-zone p{margin:0;color:var(--muted);font-size:12px}
+
+.preview{position:relative;margin-top:12px;border-radius:13px;overflow:hidden;background:#1a2838;min-height:160px;display:none}
+.preview video{width:100%;max-height:240px;object-fit:cover;display:block}
+
+.badge{
+  display:inline-flex;align-items:center;padding:4px 8px;border-radius:99px;
+  font-size:10px;font-weight:850;white-space:nowrap;
+}
+.large,.critical{background:#ffe8e7;color:#c43e3e}
+.medium,.high{background:#fff0df;color:#b96a1e}
+.small,.low{background:#fff8d9;color:#947514}
+.fixed{background:#ddf7e9;color:#14784b}
+.pending{background:#fff0df;color:#a9651d}
+.progress{background:#e6efff;color:#3567aa}
+.neutral{background:var(--bg);color:var(--muted)}
+
+.banner{
+  border-radius:11px;padding:12px 14px;font-size:12px;font-weight:700;
+  margin-top:10px;display:none;
+}
+.banner.show{display:flex;align-items:center;gap:10px}
+.banner.new{background:#e2f7ec;color:#14784b}
+
+.section-head{display:flex;align-items:end;justify-content:space-between;gap:15px;margin:26px 0 14px}
+.section-head h2{font-size:21px;letter-spacing:-.6px;margin:4px 0}
+.section-head p{margin:0;color:var(--muted);font-size:13px}
+
+.charts-grid{display:grid;grid-template-columns:1.1fr 1fr;gap:16px;margin:16px 0}
+.chart-box{height:250px;position:relative}
+
+.toolbar{display:flex;gap:9px;flex-wrap:wrap;margin:14px 0;align-items:center}
+.toolbar input,.toolbar select{
+  background:var(--panel);color:var(--ink);border:1px solid var(--line);
+  border-radius:9px;padding:9px 12px;font-size:12px;
+}
+.table-wrap{overflow:auto;border:1px solid var(--line);border-radius:14px;background:var(--panel)}
+table{width:100%;border-collapse:collapse;min-width:760px}
+th,td{text-align:left;padding:12px 14px;border-bottom:1px solid var(--line);font-size:12px}
+th{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.7px;background:var(--bg)}
+td select{border:1px solid var(--line);background:var(--bg);color:var(--ink);padding:6px 8px;border-radius:7px;font-size:11px}
+.table-photo{width:42px;height:32px;border-radius:6px;background:linear-gradient(135deg,#526a7a,#172c41);display:grid;place-items:center;color:white;font-size:12px}
+
+.map-layout{display:grid;grid-template-columns:1fr 280px;gap:16px}
+#dashMap{height:520px;border-radius:16px;border:1px solid var(--line);z-index:1}
+.filter-box{background:var(--panel);border:1px solid var(--line);padding:16px;border-radius:15px}
+.filter-box h3{margin:0 0 12px;font-size:14px}
+.legend{display:grid;gap:9px;font-size:12px;color:var(--muted)}
+.legend span{display:flex;align-items:center;gap:9px}
+.dot{width:10px;height:10px;border-radius:50%;display:inline-block}
+
+.toast{
+  position:fixed;right:20px;bottom:20px;z-index:2000;background:#10233f;
+  color:white;padding:13px 18px;border-radius:12px;box-shadow:0 12px 30px #0003;
+  font-size:13px;transform:translateY(100px);opacity:0;transition:.3s;
+}
+.toast.show{transform:translateY(0);opacity:1}
+.loader{
+  width:16px;height:16px;border:2px solid #0b5e56;border-top-color:transparent;
+  border-radius:50%;display:inline-block;animation:spin .7s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+.footer{border-top:1px solid var(--line);padding:22px;text-align:center;color:var(--muted);font-size:11px;margin-top:40px}
+
+@media(max-width:980px){
+  .stats-grid{grid-template-columns:repeat(2,1fr)}
+  .metrics-row{grid-template-columns:repeat(3,1fr)}
+  .charts-grid,.grid-2,.grid-1-2,.map-layout{grid-template-columns:1fr}
+  .nav{display:none;position:absolute;top:72px;left:0;right:0;background:var(--panel);padding:12px 16px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+  .nav.open{display:flex}
+  .nav button,.nav a{flex:1 1 45%}
+  .mobile-menu{display:inline-flex}
+}
+@media(max-width:600px){
+  .stats-grid,.metrics-row{grid-template-columns:repeat(2,1fr)}
+  .topbar{height:64px;padding:0 14px}
+  .page-title{flex-direction:column}
+}
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<header class="topbar">
+  <div style="display:flex;align-items:center;gap:12px">
+    <a href="index.html" class="brand">
+      <div class="brand-mark">⌁</div>
+      <div>RoadGuard <span style="color:var(--accent)">AI</span></div>
+    </a>
+    <span class="portal-tag">Municipal Portal</span>
+  </div>
+
+  <nav class="nav" id="nav">
+    <button class="active" data-page="overview">Overview</button>
+    <button data-page="video-ai">Video Analysis</button>
+    <button data-page="gis-map">GIS Map</button>
+    <button data-page="defects-mgmt">Damage Reports</button>
+    <button data-page="analytics">Analytics</button>
+    <a href="index.html" class="btn btn-outline btn-sm" style="margin-left:6px">⇦ Citizen Portal</a>
+  </nav>
+
+  <div class="top-actions">
+    <button class="theme-btn" id="themeBtn" title="Toggle theme">☾</button>
+    <button class="theme-btn mobile-menu" id="menuBtn" title="Menu">☰</button>
+  </div>
+</header>
+
+<main class="container">
+
+  <!-- TAB 1: OVERVIEW -->
+  <section class="page active" id="page-overview">
+    <div class="page-title">
+      <div>
+        <div class="eyebrow">EXECUTIVE INTELLIGENCE</div>
+        <h1>Operations Command Center</h1>
+        <p>Live road defect monitoring, inspection tracking, and repair dispatch management.</p>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-primary btn-sm" onclick="showPage('video-ai')">▶ Process Dashcam Video</button>
+        <button class="btn btn-light btn-sm" onclick="exportReportsCSV()">↓ Export Audit CSV</button>
+      </div>
+    </div>
+
+    <!-- 4 High-Level Stat Cards -->
+    <div class="stats-grid" id="overviewStats"></div>
+
+    <!-- Charts Row -->
+    <div class="charts-grid">
+      <div class="card">
+        <div class="section-head" style="margin:0 0 10px">
+          <div><div class="eyebrow">DAMAGE CLASSIFICATION</div><h3 style="margin:2px 0;font-size:15px">Active Defect Severity Mix</h3></div>
+          <span class="badge neutral" id="severitySummaryBadge">-- Total</span>
+        </div>
+        <div class="chart-box"><canvas id="overviewSeverityChart"></canvas></div>
+      </div>
+
+      <div class="card">
+        <div class="section-head" style="margin:0 0 10px">
+          <div><div class="eyebrow">REPAIR VELOCITY</div><h3 style="margin:2px 0;font-size:15px">Weekly Inspection Inflow</h3></div>
+          <span class="badge fixed">Trending +14%</span>
+        </div>
+        <div class="chart-box"><canvas id="overviewWeeklyChart"></canvas></div>
+      </div>
+    </div>
+
+    <!-- Recent Critical Inspections -->
+    <div class="section-head">
+      <div><div class="eyebrow">PRIORITY QUEUE</div><h2>High-Risk Road Sections Requiring Action</h2></div>
+      <button class="btn btn-light btn-sm" onclick="showPage('defects-mgmt')">View Full Registry →</button>
+    </div>
+    <div class="card" id="priorityDefectsContainer" style="padding:12px"></div>
+  </section>
+
+  <!-- TAB 2: VIDEO ANALYSIS DASHBOARD (FASTAPI INTEGRATED) -->
+  <section class="page" id="page-video-ai">
+    <div class="page-title">
+      <div>
+        <div class="eyebrow">AI INFERENCE & DEDUPLICATION</div>
+        <h1>Dashcam Video Analysis</h1>
+        <p>Process road survey videos with YOLO model (<code>road_damage_best.pt</code>), ByteTrack deduplication, timeline analytics, and GIS export.</p>
+      </div>
+      <span class="badge fixed">AI Model: road_damage_best.pt</span>
+    </div>
+
+    <div class="grid-1-2">
+      <!-- Config Panel -->
+      <div class="card space-y-4">
+        <h3 style="margin:0 0 4px;font-size:15px">1. Ingest Dashcam Recording</h3>
+        <p class="hint">Upload vehicle camera video (.mp4, .avi, .mov).</p>
+
+        <div class="upload-zone" id="dashcamDropZone">
+          <div class="upload-icon">📹</div>
+          <h3 id="dashcamFileName" style="margin:4px 0">Drop road survey video</h3>
+          <p id="dashcamFileSub">Click to browse (Up to 500 MB)</p>
+          <input type="file" id="dashcamFileInput" accept="video/*,.mp4,.avi,.mov,.webm" hidden>
+        </div>
+        <div class="preview" id="dashcamInputPreview"></div>
+
+        <div class="section-head" style="margin:18px 0 8px">
+          <div><div class="eyebrow">TUNING PARAMETERS</div><h4 style="margin:2px 0;font-size:13px">Configurable Inference Settings</h4></div>
+        </div>
+
+        <div class="field">
+          <label>Confidence Threshold: <b id="valConf" style="color:var(--accent)">0.25</b></label>
+          <input type="range" id="paramConf" min="0.05" max="0.90" step="0.05" value="0.25" oninput="$('valConf').textContent=this.value">
+        </div>
+
+        <div class="field">
+          <label>IoU Deduplication Threshold: <b id="valIou" style="color:var(--accent)">0.45</b></label>
+          <input type="range" id="paramIou" min="0.10" max="0.80" step="0.05" value="0.45" oninput="$('valIou').textContent=this.value">
+        </div>
+
+        <div class="grid-2" style="margin:0">
+          <div class="field">
+            <label>Input Size (px)</label>
+            <select id="paramImgsz">
+              <option value="640" selected>640 &times; 640</option>
+              <option value="480">480 &times; 480 (Fast)</option>
+              <option value="800">800 &times; 800 (Detailed)</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Frame Skip</label>
+            <select id="paramStride">
+              <option value="2" selected>Skip 1 (Stride 2x)</option>
+              <option value="3">Skip 2 (Stride 3x)</option>
+              <option value="1">All Frames (Dense)</option>
+              <option value="5">Ultra Fast (5x)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Road Stretch Landmark</label>
+          <input id="dashcamRoadName" value="Outer Ring Expressway Km 12-16" placeholder="Road name">
+        </div>
+
+        <div class="grid-2" style="margin:0">
+          <div class="field"><label>Latitude</label><input type="number" step="0.0001" id="dashcamLat" value="15.3647"></div>
+          <div class="field"><label>Longitude</label><input type="number" step="0.0001" id="dashcamLng" value="75.1240"></div>
+        </div>
+
+        <button class="btn btn-primary" id="btnRunVideoAnalysis" style="width:100%;padding:13px;font-size:14px;margin-top:10px">
+          <span>✦ Run AI Video Analysis</span>
+        </button>
+
+        <div id="videoAnalysisLoader" class="banner new" style="display:none;align-items:center;gap:10px">
+          <span class="loader"></span>
+          <span id="videoLoaderText">Executing inference & ByteTrack deduplication...</span>
+        </div>
+      </div>
+
+      <!-- Video Live Results Panel -->
+      <div class="card" id="videoResultsDashboard" style="display:none">
+        <div class="section-head" style="margin:0 0 14px">
+          <div><div class="eyebrow">SURVEY VERIFIED</div><h3 style="margin:2px 0;font-size:16px">Inference & Tracking Telemetry</h3></div>
+          <div style="display:flex;gap:8px">
+            <a id="btnDownloadClip" class="btn btn-light btn-sm" href="#" target="_blank">⬇ Download Clip</a>
+            <button class="btn btn-primary btn-sm" id="btnSaveToDb">💾 Save to Database</button>
+          </div>
+        </div>
+
+        <!-- 6 Metrics -->
+        <div class="metrics-row" style="margin:0 0 16px">
+          <div class="stat" style="padding:13px"><div class="stat-top">Processed <span class="stat-icon">🎞</span></div><strong id="metProcessedFrames" style="font-size:22px">--</strong><small id="metTotalFrames">-- total</small></div>
+          <div class="stat" style="padding:13px"><div class="stat-top">Speed <span class="stat-icon">⚡</span></div><strong id="metFps" style="font-size:22px">-- FPS</strong><small id="metElapsed">--s</small></div>
+          <div class="stat" style="padding:13px"><div class="stat-top">Unique <span class="stat-icon">⚠</span></div><strong id="metUniqueDamages" style="font-size:22px;color:var(--red)">--</strong><small>Defects</small></div>
+          <div class="stat" style="padding:13px"><div class="stat-top">Raw Boxes <span class="stat-icon">⌖</span></div><strong id="metRawBoxes" style="font-size:22px">--</strong><small>Detections</small></div>
+          <div class="stat" style="padding:13px"><div class="stat-top">Deduplicated <span class="stat-icon">✓</span></div><strong id="metDuplicatesRemoved" style="font-size:22px;color:var(--green)">--</strong><small>Cleaned</small></div>
+          <div class="stat" style="padding:13px"><div class="stat-top">Duration <span class="stat-icon">⏱</span></div><strong id="metClipLength" style="font-size:22px">--s</strong><small>Length</small></div>
+        </div>
+
+        <!-- Video Player -->
+        <div style="background:#000;border-radius:12px;overflow:hidden;border:1px solid var(--line);margin:14px 0">
+          <video id="videoResultPlayer" controls autoplay muted playsinline preload="auto" style="width:100%;max-height:300px;display:block"></video>
+        </div>
+
+        <!-- Video Charts -->
+        <div class="grid-2" style="margin-top:14px">
+          <div>
+            <h4 style="margin:0 0 8px;font-size:13px;color:var(--muted)">Severity Distribution</h4>
+            <div style="height:170px"><canvas id="videoSeverityChart"></canvas></div>
+          </div>
+          <div>
+            <h4 style="margin:0 0 8px;font-size:13px;color:var(--muted)">Damage Timeline (Occurrences / Second)</h4>
+            <div style="height:170px"><canvas id="videoTimelineChart"></canvas></div>
+          </div>
+        </div>
+
+        <!-- Table -->
+        <h4 style="margin:16px 0 8px;font-size:13px;color:var(--muted)">Tracked Defect Manifest</h4>
+        <div class="table-wrap" style="max-height:220px">
+          <table>
+            <thead><tr><th>Track ID</th><th>Category</th><th>Severity</th><th>Frames</th><th>Confidence</th></tr></thead>
+            <tbody id="videoDamagesTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Placeholder before analysis -->
+      <div class="card" id="videoEmptyPlaceholder" style="display:grid;place-items:center;min-height:360px;text-align:center;padding:40px">
+        <div>
+          <div style="font-size:42px;margin-bottom:12px">📹</div>
+          <h3 style="margin:0 0 6px">No Survey Video Analyzed Yet</h3>
+          <p class="hint" style="max-width:320px;margin:auto">Upload a dashcam survey clip on the left and configure inference parameters to launch frame-by-frame defect tracking.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- TAB 3: GIS MAP -->
+  <section class="page" id="page-gis-map">
+    <div class="page-title">
+      <div>
+        <div class="eyebrow">GEOSPATIAL ROAD NETWORK</div>
+        <h1>Spatial Infrastructure Map</h1>
+        <p>Interactive defect mapping, corridor clustering, and road hazard inspection.</p>
+      </div>
+      <button class="btn btn-primary btn-sm" onclick="showPage('video-ai')">＋ Ingest Survey Video</button>
+    </div>
+
+    <div class="map-layout">
+      <div id="dashMap"></div>
+      <aside class="map-side" style="display:flex;flex-direction:column;gap:12px">
+        <div class="filter-box">
+          <h3>Filter by Severity</h3>
+          <div class="field">
+            <select id="mapFilterSeverity" onchange="renderDashMapMarkers()">
+              <option value="all">All Severities</option>
+              <option value="Large">Large / Critical</option>
+              <option value="Medium">Medium / Moderate</option>
+              <option value="Small">Small / Minor</option>
+              <option value="Fixed">Fixed / Repaired</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Filter by Status</label>
+            <select id="mapFilterStatus" onchange="renderDashMapMarkers()">
+              <option value="all">All Statuses</option>
+              <option value="Reported">Reported</option>
+              <option value="In Progress">In Progress</option>
+              <option value="Fixed">Fixed</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="filter-box">
+          <h3>Damage Legend</h3>
+          <div class="legend">
+            <span><i class="dot" style="background:var(--red)"></i> Critical / Large Pothole</span>
+            <span><i class="dot" style="background:var(--orange)"></i> Moderate / Medium Crack</span>
+            <span><i class="dot" style="background:var(--yellow)"></i> Minor / Small Distress</span>
+            <span><i class="dot" style="background:var(--green)"></i> Repaired / Compliant</span>
+          </div>
+        </div>
+
+        <div class="filter-box">
+          <h3>Corridor Summary</h3>
+          <div id="mapCorridorSummary" class="hint">Loading GIS records...</div>
+        </div>
+      </aside>
+    </div>
+  </section>
+
+  <!-- TAB 4: DEFECTS MANAGEMENT TABLE -->
+  <section class="page" id="page-defects-mgmt">
+    <div class="page-title">
+      <div>
+        <div class="eyebrow">MUNICIPAL INVENTORY</div>
+        <h1>Road Damage Registry</h1>
+        <p>Audit citizen and dashcam reports, assign maintenance status, and export records.</p>
+      </div>
+      <button class="btn btn-light btn-sm" onclick="exportReportsCSV()">↓ Export CSV</button>
+    </div>
+
+    <div class="toolbar">
+      <input id="tblSearch" placeholder="Search road name or ID..." oninput="renderReportsTable()" style="min-width:240px">
+      <select id="tblFilterSeverity" onchange="renderReportsTable()">
+        <option value="all">All Severity</option>
+        <option value="Large">Large</option>
+        <option value="Medium">Medium</option>
+        <option value="Small">Small</option>
+      </select>
+      <select id="tblFilterStatus" onchange="renderReportsTable()">
+        <option value="all">All Status</option>
+        <option value="Reported">Reported</option>
+        <option value="In Progress">In Progress</option>
+        <option value="Fixed">Fixed</option>
+      </select>
+      <button class="btn btn-outline btn-sm" onclick="resetTableFilters()">Reset Filters</button>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Thumbnail</th>
+            <th>Inspection Code & Road</th>
+            <th>Severity</th>
+            <th>Date</th>
+            <th>Road Health</th>
+            <th>Workflow Status</th>
+          </tr>
+        </thead>
+        <tbody id="tblReportsBody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- TAB 5: ANALYTICS -->
+  <section class="page" id="page-analytics">
+    <div class="page-title">
+      <div>
+        <div class="eyebrow">STATISTICAL INTELLIGENCE</div>
+        <h1>Infrastructure Analytics</h1>
+        <p>Deterioration patterns, repair turnaround times, and predictive road maintenance metrics.</p>
+      </div>
+    </div>
+
+    <div class="charts-grid">
+      <div class="card">
+        <h3 style="margin:0 0 10px;font-size:15px">Damage Distribution by Category</h3>
+        <div class="chart-box"><canvas id="analyticsCategoryChart"></canvas></div>
+      </div>
+      <div class="card">
+        <h3 style="margin:0 0 10px;font-size:15px">Monthly Repair Completion Rate</h3>
+        <div class="chart-box"><canvas id="analyticsMonthlyChart"></canvas></div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:16px">
+      <h3 style="margin:0 0 8px;font-size:15px">Corridor Risk Breakdown</h3>
+      <p class="hint" style="margin-bottom:14px">Prioritized based on defect density, severity, and speed limits.</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Corridor</th><th>Total Defects</th><th>Severe Cavities</th><th>Risk Index</th><th>Action Tier</th></tr></thead>
+          <tbody>
+            <tr><td><b>Keshwapur Main Corridor</b></td><td>14 defects</td><td>6 Large</td><td><b style="color:var(--red)">84 / 100</b></td><td><span class="badge critical">Immediate Dispatch</span></td></tr>
+            <tr><td><b>Vidyanagar - Unkal Road</b></td><td>9 defects</td><td>3 Large</td><td><b style="color:var(--orange)">62 / 100</b></td><td><span class="badge high">Scheduled 48h</span></td></tr>
+            <tr><td><b>Old Hubballi Bypass Lane</b></td><td>5 defects</td><td>1 Large</td><td><b style="color:var(--yellow)">41 / 100</b></td><td><span class="badge medium">Routine Cycle</span></td></tr>
+            <tr><td><b>Airport Expressway</b></td><td>2 defects</td><td>0 Large</td><td><b style="color:var(--green)">18 / 100</b></td><td><span class="badge fixed">Compliant</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="footer">
+  RoadGuard AI &middot; Advanced Municipal Road Intelligence & Autonomous Video Analytics
+</footer>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+
+// Master Data Model Preserved from index.html
+const masterReports = [
+  {id:'RG-1001',road:'Keshwapur Main Road',lat:15.3658,lng:75.1231,severity:'Large',date:'2026-11-12',status:'Reported',health:38,kind:'Pothole',sent:true},
+  {id:'RG-1002',road:'Vidyanagar 2nd Cross',lat:15.3692,lng:75.1210,severity:'Medium',date:'2026-11-11',status:'In Progress',health:62,kind:'Crack',sent:true},
+  {id:'RG-1003',road:'Gokul Road',lat:15.3507,lng:75.1372,severity:'Small',date:'2026-11-10',status:'Reported',health:81,kind:'Pothole',sent:false},
+  {id:'RG-1004',road:'Unkal Lake Road',lat:15.3821,lng:75.1178,severity:'Large',date:'2026-11-09',status:'Fixed',health:92,kind:'Pothole',sent:true},
+  {id:'RG-1005',road:'Deshpande Nagar Road',lat:15.3618,lng:75.1298,severity:'Medium',date:'2026-11-08',status:'In Progress',health:57,kind:'Surface damage',sent:true},
+  {id:'RG-1006',road:'Airport Road',lat:15.3590,lng:75.0840,severity:'Small',date:'2026-11-07',status:'Fixed',health:95,kind:'Crack',sent:true},
+  {id:'RG-1007',road:'BVB College Road',lat:15.3605,lng:75.1228,severity:'Large',date:'2026-11-06',status:'Reported',health:42,kind:'Pothole',sent:true},
+  {id:'RG-1008',road:'Old Hubballi Market Road',lat:15.3474,lng:75.1390,severity:'Medium',date:'2026-11-05',status:'Reported',health:66,kind:'Crack',sent:false},
+  {id:'RG-1009',road:'Kundgol Road',lat:15.3732,lng:75.1430,severity:'Small',date:'2026-11-04',status:'Fixed',health:89,kind:'Pothole',sent:true},
+  {id:'RG-1010',road:'Lamington Road',lat:15.3584,lng:75.1262,severity:'Large',date:'2026-11-03',status:'In Progress',health:35,kind:'Pothole',sent:true},
+  {id:'RG-1011',road:'Sutagatti Road',lat:15.3900,lng:75.1320,severity:'Medium',date:'2026-11-02',status:'Reported',health:59,kind:'Surface damage',sent:true},
+  {id:'RG-1012',road:'Station Road',lat:15.3524,lng:75.1241,severity:'Small',date:'2026-11-01',status:'Fixed',health:94,kind:'Crack',sent:true},
+  {id:'RG-1013',road:'M G Road',lat:15.3565,lng:75.1280,severity:'Medium',date:'2026-10-30',status:'Reported',health:63,kind:'Pothole',sent:true},
+  {id:'RG-1014',road:'Akshay Colony Road',lat:15.3770,lng:75.1050,severity:'Large',date:'2026-10-29',status:'Reported',health:31,kind:'Pothole',sent:true},
+  {id:'RG-1015',road:'Siddeshwar Park Road',lat:15.3740,lng:75.1150,severity:'Small',date:'2026-10-28',status:'Fixed',health:97,kind:'Crack',sent:true},
+  {id:'RG-1016',road:'Navanagar Main Road',lat:15.3400,lng:75.1090,severity:'Medium',date:'2026-10-27',status:'In Progress',health:68,kind:'Surface damage',sent:true},
+  {id:'RG-1017',road:'Hosayellapur Road',lat:15.3430,lng:75.1260,severity:'Large',date:'2026-10-26',status:'Reported',health:40,kind:'Pothole',sent:true},
+  {id:'RG-1018',road:'Keshwapur Circle Road',lat:15.3675,lng:75.1305,severity:'Small',date:'2026-10-25',status:'Reported',health:84,kind:'Crack',sent:false},
+  {id:'RG-1019',road:'PB Road Service Lane',lat:15.3800,lng:75.1450,severity:'Medium',date:'2026-10-24',status:'Fixed',health:91,kind:'Pothole',sent:true},
+  {id:'RG-1020',road:'Saptapur Road',lat:15.3650,lng:75.1060,severity:'Large',date:'2026-10-23',status:'In Progress',health:44,kind:'Pothole',sent:true}
+];
+
+let appReports = masterReports.map(r => ({...r}));
+let dashMap = null, dashMarkers = [];
+let ovSeverityChart = null, ovWeeklyChart = null;
+let vidSeverityChart = null, vidTimelineChart = null;
+let anCategoryChart = null, anMonthlyChart = null;
+let lastVideoResult = null;
+
+const severityColor = s => ({Large:'#e55353',Critical:'#e55353',Medium:'#ed913e',High:'#ed913e',Small:'#d8ae27',Low:'#d8ae27',Fixed:'#20a56b'}[s] || '#718096');
+
+function toast(msg) {
+  const t = $('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2800);
+}
+
+// Navigation & Tab Switching
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  const target = $('page-' + name);
+  if (target) target.classList.add('active');
+
+  document.querySelectorAll('.nav button').forEach(b => {
+    b.classList.toggle('active', b.dataset.page === name);
+  });
+  $('nav').classList.remove('open');
+  window.scrollTo({top: 0, behavior: 'smooth'});
+
+  setTimeout(() => {
+    if (name === 'overview') renderOverview();
+    if (name === 'gis-map') initDashMap();
+    if (name === 'defects-mgmt') renderReportsTable();
+    if (name === 'analytics') renderAnalyticsCharts();
+  }, 100);
+}
+
+document.querySelectorAll('.nav button').forEach(b => {
+  b.addEventListener('click', () => showPage(b.dataset.page));
+});
+$('menuBtn').onclick = () => $('nav').classList.toggle('open');
+
+// Dark/Light Theme Switcher
+$('themeBtn').onclick = () => {
+  const isDark = document.documentElement.dataset.theme !== 'dark';
+  document.documentElement.dataset.theme = isDark ? 'dark' : 'light';
+  $('themeBtn').textContent = isDark ? '☀' : '☾';
+  renderOverviewCharts();
+  if (lastVideoResult) renderVideoCharts(lastVideoResult);
+  renderAnalyticsCharts();
+};
+
+function statCard(label, val, icon, note) {
+  return `<div class="stat"><div class="stat-top">${label}<span class="stat-icon">${icon}</span></div><strong>${val}</strong><small>${note}</small></div>`;
+}
+
+// 1. RENDER OVERVIEW
+function renderOverview() {
+  const total = appReports.length;
+  const critical = appReports.filter(r => r.severity === 'Large' && r.status !== 'Fixed').length;
+  const inProgress = appReports.filter(r => r.status === 'In Progress').length;
+  const fixed = appReports.filter(r => r.status === 'Fixed').length;
+
+  $('overviewStats').innerHTML =
+    statCard('Total Monitored Defects', total, '⌖', 'Across all road segments') +
+    statCard('Critical / Large Cavities', critical, '⚠', 'High collision/blowout risk') +
+    statCard('In-Progress Repairs', inProgress, '↻', 'Active municipal work orders') +
+    statCard('Verified Fixed Roads', fixed, '✓', 'Quality audited & compliant');
+
+  $('severitySummaryBadge').textContent = `${critical} Critical · ${total - critical - fixed} Moderate/Minor`;
+
+  renderOverviewCharts();
+
+  // Priority Defects List
+  const priorityList = appReports.filter(r => r.severity === 'Large' && r.status !== 'Fixed').slice(0, 4);
+  $('priorityDefectsContainer').innerHTML = priorityList.map(r => `
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;border-bottom:1px solid var(--line);font-size:12px">
+      <div>
+        <b>${r.road}</b> <small style="color:var(--muted)">· ${r.id} · ${r.date}</small>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px">Health: <span style="color:var(--red);font-weight:700">${r.health}/100</span> · GPS: ${r.lat.toFixed(4)}, ${r.lng.toFixed(4)}</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <span class="badge large">${r.severity} Pothole</span>
+        <button class="btn btn-light btn-sm" onclick="quickFixReport('${r.id}')">Mark Fixed</button>
+      </div>
+    </div>
+  `).join('') || '<div style="text-align:center;color:var(--muted);padding:14px">No critical defects currently pending.</div>';
+}
+
+function renderOverviewCharts() {
+  if (!window.Chart) return;
+  const isDark = document.documentElement.dataset.theme === 'dark';
+  const ink = isDark ? '#c7d5e5' : '#718096';
+  const grid = isDark ? '#263a55' : '#e5ebf3';
+
+  // Severity Chart
+  if (ovSeverityChart) ovSeverityChart.destroy();
+  const counts = ['Large', 'Medium', 'Small'].map(s => appReports.filter(r => r.severity === s && r.status !== 'Fixed').length);
+  ovSeverityChart = new Chart($('overviewSeverityChart'), {
+    type: 'bar',
+    data: {
+      labels: ['Critical / Large', 'Moderate / Medium', 'Minor / Small'],
+      datasets: [{
+        data: counts,
+        backgroundColor: ['#e55353', '#ed913e', '#d8ae27'],
+        borderRadius: 8,
+        maxBarThickness: 45
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: ink }, grid: { display: false } },
+        y: { beginAtZero: true, ticks: { color: ink, precision: 0 }, grid: { color: grid } }
+      }
+    }
+  });
+
+  // Weekly Trend Chart
+  if (ovWeeklyChart) ovWeeklyChart.destroy();
+  ovWeeklyChart = new Chart($('overviewWeeklyChart'), {
+    type: 'line',
+    data: {
+      labels: ['Wk 1', 'Wk 2', 'Wk 3', 'Wk 4', 'Wk 5', 'Wk 6'],
+      datasets: [{
+        label: 'New Reports',
+        data: [12, 19, 15, 26, 22, 31],
+        borderColor: '#21b8a6',
+        backgroundColor: '#21b8a622',
+        fill: true,
+        tension: 0.38,
+        pointRadius: 4
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: ink }, grid: { display: false } },
+        y: { beginAtZero: true, ticks: { color: ink, precision: 0 }, grid: { color: grid } }
+      }
+    }
+  });
+}
+
+// 2. VIDEO ANALYSIS DASHBOARD LOGIC
+let dashcamFile = null;
+const dashcamDropZone = $('dashcamDropZone');
+const dashcamFileInput = $('dashcamFileInput');
+
+dashcamDropZone.onclick = e => {
+  if (e.target.tagName.toLowerCase() === 'video') return;
+  dashcamFileInput.click();
+};
+
+['dragover','dragenter'].forEach(ev => dashcamDropZone.addEventListener(ev, e => {
+  e.preventDefault();
+  dashcamDropZone.classList.add('drag');
+}));
+['dragleave','drop'].forEach(ev => dashcamDropZone.addEventListener(ev, e => {
+  e.preventDefault();
+  dashcamDropZone.classList.remove('drag');
+}));
+
+dashcamDropZone.addEventListener('drop', e => {
+  if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+    handleDashcamSelect(e.dataTransfer.files[0]);
+  }
+});
+dashcamFileInput.onchange = e => {
+  if (e.target.files && e.target.files.length > 0) {
+    handleDashcamSelect(e.target.files[0]);
+  }
+};
+
+function handleDashcamSelect(file) {
+  if (!file) return;
+  dashcamFile = file;
+  const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
+  $('dashcamFileName').textContent = file.name;
+  $('dashcamFileSub').textContent = `Size: ${sizeMB} MB · Format: ${file.type || 'video/mp4'} · Ready`;
+
+  const preview = $('dashcamInputPreview');
+  const url = URL.createObjectURL(file);
+  preview.style.display = 'block';
+  preview.innerHTML = `<video src="${url}" controls style="width:100%;max-height:220px;border-radius:10px"></video>`;
+  toast(`Selected ${file.name} (${sizeMB} MB)`);
+}
+
+$('btnRunVideoAnalysis').onclick = async () => {
+  if (!dashcamFile) {
+    toast('Please select or drop a dashcam video file (.mp4) first.');
+    return;
+  }
+
+  const btn = $('btnRunVideoAnalysis');
+  const loader = $('videoAnalysisLoader');
+  const loaderText = $('videoLoaderText');
+
+  btn.disabled = true;
+  loader.style.display = 'flex';
+  loaderText.textContent = `Streaming frames to YOLO model (road_damage_best.pt)...`;
+
+  const formData = new FormData();
+  formData.append('file', dashcamFile);
+  formData.append('conf_thresh', $('paramConf').value);
+  formData.append('iou_thresh', $('paramIou').value);
+  formData.append('imgsz', $('paramImgsz').value);
+  formData.append('frame_skip', $('paramStride').value);
+  formData.append('road_name', $('dashcamRoadName').value || 'Survey Corridor');
+  formData.append('lat', $('dashcamLat').value || '15.3647');
+  formData.append('lng', $('dashcamLng').value || '75.1240');
+
+  try {
+    const res = await fetch('/api/video/analyze', {
+      method: 'POST',
+      body: formData
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || `Server returned HTTP ${res.status}`);
+    }
+
+    const data = await res.json();
+    lastVideoResult = data;
+    renderVideoAnalysisResults(data);
+    toast('Video analysis and ByteTrack tracking completed successfully!');
+  } catch (err) {
+    console.error('Video analysis failed:', err);
+    toast(`Video analysis error: ${err.message}`);
+  } finally {
+    btn.disabled = false;
+    loader.style.display = 'none';
+  }
+};
+
+function renderVideoAnalysisResults(data) {
+  $('videoEmptyPlaceholder').style.display = 'none';
+  $('videoResultsDashboard').style.display = 'block';
+
+  $('metProcessedFrames').textContent = data.processed_frames;
+  $('metTotalFrames').textContent = `out of ${data.total_frames} total frames`;
+  $('metFps').textContent = `${data.fps} FPS`;
+  $('metElapsed').textContent = `Total: ${data.total_time_sec}s (${data.video_fps} video fps)`;
+  $('metUniqueDamages').textContent = data.unique_damages;
+  $('metRawBoxes').textContent = data.raw_boxes_count;
+  $('metDuplicatesRemoved').textContent = `${data.duplicates_removed} cleaned`;
+  $('metClipLength').textContent = `${data.clip_length_sec}s`;
+
+  const player = $('videoResultPlayer');
+  player.src = data.annotated_video_url + '?t=' + Date.now();
+  player.load();
+  const playPromise = player.play();
+  if (playPromise !== undefined) {
+    playPromise.catch(() => {
+      player.muted = true;
+      player.play().catch(() => {});
+    });
+  }
+
+  $('btnDownloadClip').href = data.download_url;
+
+  renderVideoCharts(data);
+
+  const tbody = $('videoDamagesTableBody');
+  tbody.innerHTML = '';
+  if (data.unique_damages_list && data.unique_damages_list.length > 0) {
+    data.unique_damages_list.forEach(item => {
+      const row = document.createElement('tr');
+      row.innerHTML = `
+        <td><b>${item.track_id}</b></td>
+        <td>${item.display_name}</td>
+        <td><span class="badge ${item.severity.toLowerCase()}">${item.severity}</span></td>
+        <td>Frame ${item.first_frame}</td>
+        <td>Frame ${item.last_frame} (${item.duration_frames}f)</td>
+        <td><b>${(item.max_confidence * 100).toFixed(1)}%</b></td>
+      `;
+      tbody.appendChild(row);
+    });
+  } else {
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:14px">No persistent defects detected above current threshold.</td></tr>';
+  }
+
+  $('videoResultsDashboard').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function renderVideoCharts(data) {
+  if (!window.Chart) return;
+  const isDark = document.documentElement.dataset.theme === 'dark';
+  const ink = isDark ? '#c7d5e5' : '#718096';
+  const grid = isDark ? '#263a55' : '#e5ebf3';
+
+  // Severity Donut
+  if (vidSeverityChart) vidSeverityChart.destroy();
+  const sm = data.severity_mix || { Critical: 0, High: 0, Medium: 0, Low: 0 };
+  vidSeverityChart = new Chart($('videoSeverityChart'), {
+    type: 'doughnut',
+    data: {
+      labels: ['Critical', 'High', 'Medium', 'Low'],
+      datasets: [{
+        data: [sm.Critical || 0, sm.High || 0, sm.Medium || 0, sm.Low || 0],
+        backgroundColor: ['#e55353', '#ed913e', '#d8ae27', '#20a56b'],
+        borderWidth: 2,
+        borderColor: isDark ? '#14243a' : '#fff'
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { position: 'right', labels: { color: ink, font: { size: 10 } } } }
+    }
+  });
+
+  // Timeline Line
+  if (vidTimelineChart) vidTimelineChart.destroy();
+  const timeline = data.damage_timeline || [];
+  vidTimelineChart = new Chart($('videoTimelineChart'), {
+    type: 'line',
+    data: {
+      labels: timeline.map(t => t.timestamp_str || `${t.time_sec}s`),
+      datasets: [{
+        data: timeline.map(t => t.damage_count),
+        borderColor: '#21b8a6',
+        backgroundColor: '#21b8a620',
+        fill: true,
+        tension: 0.35,
+        pointRadius: 3
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: ink }, grid: { color: grid } },
+        y: { beginAtZero: true, ticks: { color: ink, stepSize: 1, precision: 0 }, grid: { color: grid } }
+      }
+    }
+  });
+}
+
+$('btnSaveToDb').onclick = async () => {
+  if (!lastVideoResult) return;
+  const btn = $('btnSaveToDb');
+  btn.disabled = true;
+  btn.textContent = 'Saving...';
+
+  const formData = new FormData();
+  formData.append('video_id', lastVideoResult.video_id);
+  formData.append('lat', $('dashcamLat').value || '15.3647');
+  formData.append('lng', $('dashcamLng').value || '75.1240');
+  formData.append('notes', $('dashcamRoadName').value || 'Dashcam Survey');
+
+  try {
+    const res = await fetch('/api/video/save', { method: 'POST', body: formData });
+    const d = await res.json();
+    if (d.status === 'success') {
+      toast(`Saved survey record ${d.code} to central database!`);
+      appReports.unshift({
+        id: d.code,
+        road: d.notes,
+        lat: parseFloat(d.latitude),
+        lng: parseFloat(d.longitude),
+        severity: lastVideoResult.unique_damages >= 4 ? 'Large' : 'Medium',
+        date: new Date().toISOString().slice(0, 10),
+        status: 'Reported',
+        health: Math.max(25, 100 - lastVideoResult.unique_damages * 15),
+        kind: 'Dashcam Survey',
+        sent: true
+      });
+      renderOverview();
+      renderReportsTable();
+      if (dashMap) renderDashMapMarkers();
+    }
+  } catch (e) {
+    toast('Error saving: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '💾 Save to Database';
+  }
+};
+
+// 3. GIS MAP LOGIC
+function initDashMap() {
+  if (dashMap || !window.L) return;
+  dashMap = L.map('dashMap').setView([15.365, 75.126], 13);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap'
+  }).addTo(dashMap);
+  renderDashMapMarkers();
+  setTimeout(() => dashMap.invalidateSize(), 200);
+}
+
+function renderDashMapMarkers() {
+  if (!dashMap) return;
+  dashMarkers.forEach(m => dashMap.removeLayer(m));
+  dashMarkers = [];
+
+  const sev = $('mapFilterSeverity').value;
+  const st = $('mapFilterStatus').value;
+
+  const visible = appReports.filter(r => {
+    const matchSev = sev === 'all' || (sev === 'Fixed' ? r.status === 'Fixed' : r.severity === sev);
+    const matchSt = st === 'all' || r.status === st;
+    return matchSev && matchSt;
+  });
+
+  visible.forEach(r => {
+    const s = r.status === 'Fixed' ? 'Fixed' : r.severity;
+    const marker = L.circleMarker([r.lat, r.lng], {
+      radius: 8,
+      color: '#fff',
+      weight: 2,
+      fillColor: severityColor(s),
+      fillOpacity: 0.95
+    }).addTo(dashMap);
+
+    marker.bindPopup(`
+      <div style="min-width:180px">
+        <div style="height:55px;background:linear-gradient(130deg,#455d70,#152c42);border-radius:7px;color:white;display:grid;place-items:center;margin-bottom:7px;font-size:12px">▧ Inspection Image</div>
+        <b>${r.road}</b><br><small style="color:var(--muted)">${r.id} · ${r.date}</small>
+        <hr style="border:0;border-top:1px solid #ddd;margin:6px 0">
+        <b>${r.severity} ${r.kind}</b><br>
+        Status: <b>${r.status}</b><br>
+        Road Health: <b>${r.health}/100</b>
+      </div>
+    `);
+    dashMarkers.push(marker);
+  });
+
+  $('mapCorridorSummary').innerHTML = `<b>${visible.length}</b> total displayed reports.<br>${visible.filter(r => r.status === 'Fixed').length} verified fixed, ${visible.filter(r => r.status !== 'Fixed').length} active repairs.`;
+}
+
+// 4. DEFECTS TABLE LOGIC
+function renderReportsTable() {
+  const q = $('tblSearch').value.toLowerCase();
+  const sev = $('tblFilterSeverity').value;
+  const st = $('tblFilterStatus').value;
+
+  const rows = appReports.filter(r => {
+    const matchesSearch = r.road.toLowerCase().includes(q) || r.id.toLowerCase().includes(q);
+    const matchesSev = sev === 'all' || r.severity === sev;
+    const matchesSt = st === 'all' || r.status === st;
+    return matchesSearch && matchesSev && matchesSt;
+  });
+
+  $('tblReportsBody').innerHTML = rows.map(r => `
+    <tr>
+      <td><div class="table-photo">▧</div></td>
+      <td><b>${r.road}</b><br><small style="color:var(--muted)">${r.id} · ${r.kind}</small></td>
+      <td><span class="badge ${r.severity.toLowerCase()}">${r.severity}</span></td>
+      <td>${r.date}</td>
+      <td><b>${r.health}/100</b></td>
+      <td>
+        <select onchange="updateReportStatus('${r.id}', this.value)">
+          <option ${r.status === 'Reported' ? 'selected' : ''}>Reported</option>
+          <option ${r.status === 'In Progress' ? 'selected' : ''}>In Progress</option>
+          <option ${r.status === 'Fixed' ? 'selected' : ''}>Fixed</option>
+        </select>
+      </td>
+    </tr>
+  `).join('') || '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:18px">No matching reports found.</td></tr>';
+}
+
+function updateReportStatus(id, newStatus) {
+  const r = appReports.find(x => x.id === id);
+  if (!r) return;
+  r.status = newStatus;
+  if (newStatus === 'Fixed') r.health = Math.max(r.health, 92);
+  renderOverview();
+  renderReportsTable();
+  if (dashMap) renderDashMapMarkers();
+  toast(`${id} status updated to "${newStatus}".`);
+}
+
+function quickFixReport(id) {
+  updateReportStatus(id, 'Fixed');
+}
+
+function resetTableFilters() {
+  $('tblSearch').value = '';
+  $('tblFilterSeverity').value = 'all';
+  $('tblFilterStatus').value = 'all';
+  renderReportsTable();
+}
+
+function exportReportsCSV() {
+  const headers = ['ID', 'Road', 'Severity', 'Kind', 'Latitude', 'Longitude', 'Date', 'Health', 'Status'];
+  const rows = appReports.map(r => [r.id, r.road, r.severity, r.kind, r.lat, r.lng, r.date, r.health, r.status]);
+  const csvContent = [headers, ...rows].map(row => row.map(v => `"${String(v).replaceAll('"','""')}"`).join(',')).join('\n');
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `roadguard-damage-reports-${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+  toast('Audit CSV export generated successfully.');
+}
+
+// 5. ANALYTICS CHARTS
+function renderAnalyticsCharts() {
+  if (!window.Chart) return;
+  const isDark = document.documentElement.dataset.theme === 'dark';
+  const ink = isDark ? '#c7d5e5' : '#718096';
+  const grid = isDark ? '#263a55' : '#e5ebf3';
+
+  // Category chart
+  if (anCategoryChart) anCategoryChart.destroy();
+  anCategoryChart = new Chart($('analyticsCategoryChart'), {
+    type: 'pie',
+    data: {
+      labels: ['Potholes (D40)', 'Cracks (D00/D10)', 'Fatigue Alligator (D20)', 'Surface Erosion'],
+      datasets: [{
+        data: [18, 9, 5, 3],
+        backgroundColor: ['#e55353', '#21b8a6', '#ed913e', '#718096']
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { position: 'right', labels: { color: ink } } }
+    }
+  });
+
+  // Monthly repair rate
+  if (anMonthlyChart) anMonthlyChart.destroy();
+  anMonthlyChart = new Chart($('analyticsMonthlyChart'), {
+    type: 'bar',
+    data: {
+      labels: ['Jul', 'Aug', 'Sep', 'Oct', 'Nov'],
+      datasets: [
+        { label: 'Defects Detected', data: [34, 42, 50, 48, 38], backgroundColor: '#ed913e88', borderRadius: 6 },
+        { label: 'Repairs Completed', data: [28, 35, 47, 44, 36], backgroundColor: '#20a56b', borderRadius: 6 }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { labels: { color: ink } } },
+      scales: {
+        x: { ticks: { color: ink }, grid: { display: false } },
+        y: { beginAtZero: true, ticks: { color: ink }, grid: { color: grid } }
+      }
+    }
+  });
+}
+
+// Initial Boot
+renderOverview();
+renderReportsTable();
+</script>
+</body>
+</html>

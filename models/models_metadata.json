@@ -1,0 +1,60 @@
+[
+  {
+    "id": "keremberke/yolov8n-pothole-segmentation",
+    "name": "YOLOv8n-Pothole-Seg",
+    "arch": "YOLOv8n-seg",
+    "url": "https://huggingface.co/keremberke/yolov8n-pothole-segmentation/resolve/main/best.pt",
+    "filename": "keremberke_yolov8n_pothole.pt",
+    "classes": [
+      "pothole"
+    ],
+    "dataset": "Pothole Segmentation Dataset",
+    "published_map50": 0.842,
+    "license": "MIT"
+  },
+  {
+    "id": "Ryukijano/Pothole-detection-yolov8",
+    "name": "YOLOv8-Pothole-Detection",
+    "arch": "YOLOv8s",
+    "url": "https://huggingface.co/Ryukijano/Pothole-detection-yolov8/resolve/main/best.pt",
+    "filename": "ryukijano_yolov8_pothole.pt",
+    "classes": [
+      "pothole"
+    ],
+    "dataset": "Pothole Detection Dataset",
+    "published_map50": 0.815,
+    "license": "Apache-2.0"
+  },
+  {
+    "id": "dronefreak/rdd2022-yolov8s",
+    "name": "YOLOv8s-RDD2022",
+    "arch": "YOLOv8s",
+    "url": "https://huggingface.co/dronefreak/rdd2022-yolov8s/resolve/main/best.pt",
+    "filename": "dronefreak_rdd2022_yolov8s.pt",
+    "classes": [
+      "D00",
+      "D10",
+      "D20",
+      "D40"
+    ],
+    "dataset": "RDD2022 Multi-Country Road Damage",
+    "published_map50": 0.728,
+    "license": "CC-BY-4.0"
+  },
+  {
+    "id": "dronefreak/rdd2022-yolov8m",
+    "name": "YOLOv8m-RDD2022",
+    "arch": "YOLOv8m",
+    "url": "https://huggingface.co/dronefreak/rdd2022-yolov8m/resolve/main/best.pt",
+    "filename": "dronefreak_rdd2022_yolov8m.pt",
+    "classes": [
+      "D00",
+      "D10",
+      "D20",
+      "D40"
+    ],
+    "dataset": "RDD2022 Multi-Country Road Damage",
+    "published_map50": 0.756,
+    "license": "CC-BY-4.0"
+  }
+]

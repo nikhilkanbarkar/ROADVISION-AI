@@ -1,0 +1,187 @@
+[
+  {
+    "file": "keremberke_yolov8m_pothole_seg.pt",
+    "size_mb": 52.26,
+    "task": "segment",
+    "classes": [
+      "pothole"
+    ],
+    "tp": 4,
+    "fp": 2,
+    "fn": 1,
+    "precision": 0.6667,
+    "recall": 0.8,
+    "f1": 0.7273,
+    "map50": 0.6967,
+    "latency_ms": 641.91,
+    "fps": 1.6
+  },
+  {
+    "file": "keremberke_yolov8n_pothole.pt",
+    "size_mb": 6.44,
+    "task": "segment",
+    "classes": [
+      "pothole"
+    ],
+    "tp": 4,
+    "fp": 2,
+    "fn": 1,
+    "precision": 0.6667,
+    "recall": 0.8,
+    "f1": 0.7273,
+    "map50": 0.6967,
+    "latency_ms": 116.22,
+    "fps": 8.6
+  },
+  {
+    "file": "keremberke_yolov8s_pothole_seg.pt",
+    "size_mb": 22.73,
+    "task": "segment",
+    "classes": [
+      "pothole"
+    ],
+    "tp": 3,
+    "fp": 7,
+    "fn": 2,
+    "precision": 0.3,
+    "recall": 0.6,
+    "f1": 0.4,
+    "map50": 0.4275,
+    "latency_ms": 380.42,
+    "fps": 2.6
+  },
+  {
+    "file": "harisanth_yolov8_pothole.pt",
+    "size_mb": 21.45,
+    "task": "detect",
+    "classes": [
+      "pothole"
+    ],
+    "tp": 3,
+    "fp": 9,
+    "fn": 2,
+    "precision": 0.25,
+    "recall": 0.6,
+    "f1": 0.3529,
+    "map50": 0.4037,
+    "latency_ms": 217.06,
+    "fps": 4.6
+  },
+  {
+    "file": "dronefreak_rdd2022_yolov8m.pt",
+    "size_mb": 49.62,
+    "task": "detect",
+    "classes": [
+      "longitudinal_crack",
+      "transverse_crack",
+      "alligator_crack",
+      "pothole"
+    ],
+    "tp": 1,
+    "fp": 0,
+    "fn": 4,
+    "precision": 1.0,
+    "recall": 0.2,
+    "f1": 0.3333,
+    "map50": 0.57,
+    "latency_ms": 1011.6,
+    "fps": 1.0
+  },
+  {
+    "file": "neha_rdd_yolov8.pt",
+    "size_mb": 21.47,
+    "task": "detect",
+    "classes": [
+      "D00",
+      "D10",
+      "D20",
+      "D40"
+    ],
+    "tp": 1,
+    "fp": 0,
+    "fn": 4,
+    "precision": 1.0,
+    "recall": 0.2,
+    "f1": 0.3333,
+    "map50": 0.57,
+    "latency_ms": 284.6,
+    "fps": 3.5
+  },
+  {
+    "file": "roadvision_rdd2022_yolov8m.pt",
+    "size_mb": 49.62,
+    "task": "detect",
+    "classes": [
+      "longitudinal_crack",
+      "transverse_crack",
+      "alligator_crack",
+      "pothole"
+    ],
+    "tp": 1,
+    "fp": 0,
+    "fn": 4,
+    "precision": 1.0,
+    "recall": 0.2,
+    "f1": 0.3333,
+    "map50": 0.57,
+    "latency_ms": 785.26,
+    "fps": 1.3
+  },
+  {
+    "file": "rohith_yolov8_pothole.pt",
+    "size_mb": 5.95,
+    "task": "detect",
+    "classes": [
+      "pothole"
+    ],
+    "tp": 3,
+    "fp": 13,
+    "fn": 2,
+    "precision": 0.1875,
+    "recall": 0.6,
+    "f1": 0.2857,
+    "map50": 0.3741,
+    "latency_ms": 116.01,
+    "fps": 8.6
+  },
+  {
+    "file": "th3samaritan_rdd2022_yolo11s.pt",
+    "size_mb": 18.3,
+    "task": "detect",
+    "classes": [
+      "D00",
+      "D10",
+      "D20",
+      "D40"
+    ],
+    "tp": 1,
+    "fp": 6,
+    "fn": 4,
+    "precision": 0.1429,
+    "recall": 0.2,
+    "f1": 0.1667,
+    "map50": 0.1629,
+    "latency_ms": 291.44,
+    "fps": 3.4
+  },
+  {
+    "file": "dronefreak_rdd2022_yolov8s.pt",
+    "size_mb": 21.48,
+    "task": "detect",
+    "classes": [
+      "longitudinal_crack",
+      "transverse_crack",
+      "alligator_crack",
+      "pothole"
+    ],
+    "tp": 0,
+    "fp": 0,
+    "fn": 5,
+    "precision": 0.0,
+    "recall": 0.0,
+    "f1": 0.0,
+    "map50": 0.0,
+    "latency_ms": 197.44,
+    "fps": 5.1
+  }
+]
