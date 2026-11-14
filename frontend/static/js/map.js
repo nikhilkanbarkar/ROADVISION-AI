@@ -52,8 +52,7 @@ function initRoadMap() {
 
     // Center on Belagavi City, Karnataka
     roadMap = L.map('damage-map-container', {
-        zoomControl: true,
-        attributionControl: false
+        zoomControl: true
     }).setView(BELAGAVI_CENTER, 13);
 
     createMapTileLayer().addTo(roadMap);
@@ -218,6 +217,7 @@ async function loadMapPoints(riskFilter = "") {
 
 function createRoadPopupHTML(road, color) {
     const riskBadgeText = road.risk_classification === "RISKY" ? "CRITICAL / RISKY" : (road.risk_classification === "MODERATE" ? "MODERATE" : "SAFE");
+    const osmNames = Array.isArray(road.osm_names) ? road.osm_names.filter(Boolean).join(" / ") : "";
     return `
         <div style="font-family: inherit; width: 260px; padding: 4px;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
@@ -228,6 +228,7 @@ function createRoadPopupHTML(road, color) {
             </div>
             <div style="font-weight: 800; font-size: 14px; color: #0f172a; margin-bottom: 2px; line-height: 1.25;">${road.name}</div>
             <div style="font-size: 11px; color: #64748b; margin-bottom: 8px;">Location: <strong>${road.location || 'Belagavi'}</strong></div>
+            ${osmNames ? `<div style="font-size: 10px; color: #64748b; margin-bottom: 6px;">OSM street names: <strong>${osmNames}</strong></div>` : ""}
 
             <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px; margin-bottom: 8px;">
                 <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px;">
@@ -247,6 +248,7 @@ function createRoadPopupHTML(road, color) {
                 <span>Last Inspected: <strong>${road.last_inspected_date || 'Recent'}</strong></span>
                 <span>Source: <strong>${road.inspection_source || 'Official'}</strong></span>
             </div>
+            <div style="font-size: 9px; color: #64748b; margin-top: 4px;">Geometry: ${road.geometry_source || "OSRM/OpenStreetMap"} · &copy; OpenStreetMap contributors</div>
         </div>
     `;
 }
@@ -278,8 +280,7 @@ function initCitizenMap() {
     if (!mapContainer) return;
 
     citizenMap = L.map('citizen-map-container', {
-        zoomControl: true,
-        attributionControl: false
+        zoomControl: true
     }).setView(BELAGAVI_CENTER, 13);
 
     createMapTileLayer().addTo(citizenMap);
@@ -391,17 +392,25 @@ function renderRoutesOnMap(routeResponse, targetMap = "citizen") {
     const routes = routeResponse.routes;
     const recId = routeResponse.recommended_route_id;
     const bounds = [];
+    const displayRoutes = [
+        ...routes.filter(route => route.route_id !== recId),
+        ...routes.filter(route => route.route_id === recId)
+    ];
 
-    routes.forEach(r => {
+    displayRoutes.forEach(r => {
         const isRecommended = (r.route_id === recId);
         const polylineCoords = r.polyline || [];
         if (polylineCoords.length === 0) return;
 
         polylineCoords.forEach(c => bounds.push(c));
 
-        const color = isRecommended ? "#059669" : (r.color || "#64748b");
-        const weight = isRecommended ? 7 : 5;
-        const opacity = isRecommended ? 0.95 : 0.70;
+        const risk = String(r.risk_level || "").toLowerCase();
+        const color = r.risk_color || r.color || (
+            risk === "critical" || risk === "high" ? "#dc2626" :
+                risk === "moderate" ? "#d97706" : "#059669"
+        );
+        const weight = isRecommended ? 8 : 5;
+        const opacity = isRecommended ? 0.98 : 0.82;
 
         const line = L.polyline(polylineCoords, {
             color: color,
@@ -414,7 +423,7 @@ function renderRoutesOnMap(routeResponse, targetMap = "citizen") {
         const popup = `
             <div style="padding: 4px; font-family: inherit; width: 240px;">
                 <div style="font-weight: 900; font-size: 13px; color: ${color}; margin-bottom: 4px;">
-                    ${isRecommended ? '⭐ RECOMMENDED LOW-RISK ROUTE' : `ALTERNATIVE PATH ${r.route_id}`}
+                    ${isRecommended ? '⭐ RECOMMENDED ROUTE' : `ALTERNATIVE ROUTE ${r.route_id}`} · ${r.risk_level || 'Unknown'} risk
                 </div>
                 <div style="font-size: 12px; font-weight: 700; color: #0f172a; margin-bottom: 6px;">${r.name}</div>
                 <div style="display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 2px;">
@@ -427,11 +436,15 @@ function renderRoutesOnMap(routeResponse, targetMap = "citizen") {
                 </div>
                 <div style="display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 2px;">
                     <span>Distress Exposure:</span>
-                    <strong style="color: ${r.exposure_score > 35 ? '#dc2626' : '#059669'};">${r.exposure_score} / 100 (${r.risk_level})</strong>
+                    <strong style="color: ${r.risk_color || color};">${r.exposure_score} / 100 (${r.risk_level})</strong>
+                </div>
+                <div style="display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 2px;">
+                    <span>Distance / risk score:</span>
+                    <strong>${r.recommendation_score}</strong>
                 </div>
                 <div style="display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 6px;">
                     <span>Potholes on Route:</span>
-                    <strong style="color: ${r.severe_defects > 0 ? '#dc2626' : '#059669'};">${r.severe_defects}</strong>
+                    <strong style="color: ${r.potholes_count > 0 ? '#dc2626' : '#059669'};">${r.potholes_count}</strong>
                 </div>
                 <div style="font-size: 10px; color: #64748b; border-top: 1px solid #e2e8f0; padding-top: 4px;">
                     ${r.factors && r.factors[0] ? r.factors[0] : 'Evaluated against official verified road condition database'}

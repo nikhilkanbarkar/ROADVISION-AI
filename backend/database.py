@@ -24,7 +24,7 @@ def get_db():
 ROADVISION AI - Database Connection, Schema Migration and Initialization
 """
 import json
-from datetime import datetime, timedelta
+from datetime import datetime
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker, declarative_base
 from backend.config import DATABASE_URL
@@ -65,6 +65,12 @@ def migrate_schema():
                     conn.execute(text("ALTER TABLE road_segments ADD COLUMN inspection_source VARCHAR(50) DEFAULT 'Demonstration Sample'"))
                 if "verification_status" not in rs_cols:
                     conn.execute(text("ALTER TABLE road_segments ADD COLUMN verification_status VARCHAR(30) DEFAULT 'VERIFIED'"))
+                if "osm_names" not in rs_cols:
+                    conn.execute(text("ALTER TABLE road_segments ADD COLUMN osm_names TEXT"))
+                if "geometry_source" not in rs_cols:
+                    conn.execute(text("ALTER TABLE road_segments ADD COLUMN geometry_source VARCHAR(100) DEFAULT 'OSRM/OpenStreetMap'"))
+                if "geometry_updated_at" not in rs_cols:
+                    conn.execute(text("ALTER TABLE road_segments ADD COLUMN geometry_updated_at DATETIME"))
         except Exception as e:
             print(f"[Migration] road_segments note: {e}")
 
@@ -132,130 +138,68 @@ def migrate_schema():
 
         conn.commit()
 
-# Curated demonstration baseline profiles for Belagavi road network
-BELAGAVI_ROAD_CONDITIONS = {
-    1: {"potholes": 5, "damage": 8, "condition": 38.5, "risk": "RISKY", "loc": "Tilakwadi, Belagavi"},
-    2: {"potholes": 2, "damage": 4, "condition": 68.0, "risk": "MODERATE", "loc": "Udyambag, Belagavi"},
-    3: {"potholes": 2, "damage": 4, "condition": 72.0, "risk": "MODERATE", "loc": "Camp / Tilakwadi, Belagavi"},
-    4: {"potholes": 1, "damage": 3, "condition": 74.5, "risk": "MODERATE", "loc": "Bogarves, Belagavi"},
-    5: {"potholes": 0, "damage": 1, "condition": 88.5, "risk": "SAFE", "loc": "Hindwadi, Belagavi"},
-    6: {"potholes": 0, "damage": 1, "condition": 91.0, "risk": "SAFE", "loc": "Civil Hospital, Belagavi"},
-    7: {"potholes": 0, "damage": 0, "condition": 95.0, "risk": "SAFE", "loc": "Camp Cantonment, Belagavi"},
-    8: {"potholes": 4, "damage": 5, "condition": 48.0, "risk": "RISKY", "loc": "Camp, Belagavi"},
-    9: {"potholes": 0, "damage": 0, "condition": 98.0, "risk": "SAFE", "loc": "Kanbargi / NH-48, Belagavi"},
-    10: {"potholes": 0, "damage": 1, "condition": 94.0, "risk": "SAFE", "loc": "Auto Nagar / NH-48, Belagavi"},
-    11: {"potholes": 0, "damage": 0, "condition": 96.5, "risk": "SAFE", "loc": "Halaga / Suvarna Soudha, Belagavi"},
-    12: {"potholes": 0, "damage": 1, "condition": 89.0, "risk": "SAFE", "loc": "Fort Lake, Belagavi"},
-    13: {"potholes": 6, "damage": 9, "condition": 34.0, "risk": "RISKY", "loc": "Shahapur, Belagavi"},
-    14: {"potholes": 2, "damage": 4, "condition": 66.5, "risk": "MODERATE", "loc": "Shahapur / Vadgaon, Belagavi"},
-    15: {"potholes": 3, "damage": 5, "condition": 62.0, "risk": "MODERATE", "loc": "Vadgaon, Belagavi"},
-    16: {"potholes": 2, "damage": 3, "condition": 70.0, "risk": "MODERATE", "loc": "Central Belagavi"},
-    17: {"potholes": 2, "damage": 4, "condition": 67.5, "risk": "MODERATE", "loc": "Khade Bazar, Belagavi"},
-    18: {"potholes": 2, "damage": 3, "condition": 72.0, "risk": "MODERATE", "loc": "Tilakwadi, Belagavi"},
-    19: {"potholes": 0, "damage": 0, "condition": 93.0, "risk": "SAFE", "loc": "RPD Cross, Belagavi"},
-    20: {"potholes": 0, "damage": 1, "condition": 87.0, "risk": "SAFE", "loc": "RPD / Udyambag, Belagavi"},
-    21: {"potholes": 4, "damage": 6, "condition": 46.0, "risk": "RISKY", "loc": "SPM Road, Belagavi"},
-    22: {"potholes": 0, "damage": 0, "condition": 94.5, "risk": "SAFE", "loc": "Kanbargi, Belagavi"},
-    23: {"potholes": 5, "damage": 7, "condition": 41.0, "risk": "RISKY", "loc": "Halaga, Belagavi"},
-    24: {"potholes": 0, "damage": 0, "condition": 97.0, "risk": "SAFE", "loc": "Military Camp, Belagavi"},
-    25: {"potholes": 0, "damage": 1, "condition": 89.5, "risk": "SAFE", "loc": "Kakaves, Belagavi"},
-    26: {"potholes": 1, "damage": 3, "condition": 76.0, "risk": "MODERATE", "loc": "BIMS / Fort, Belagavi"},
-    27: {"potholes": 0, "damage": 0, "condition": 92.0, "risk": "SAFE", "loc": "Nath Pai Circle, Belagavi"},
-    28: {"potholes": 4, "damage": 6, "condition": 44.5, "risk": "RISKY", "loc": "Maratha Colony, Belagavi"},
-    29: {"potholes": 1, "damage": 2, "condition": 78.0, "risk": "MODERATE", "loc": "Hindwadi, Belagavi"},
-    30: {"potholes": 0, "damage": 1, "condition": 88.0, "risk": "SAFE", "loc": "Tilakwadi West, Belagavi"}
-}
-
 def seed_road_conditions():
-    """Initializes Belagavi road network segments with realistic baseline road condition data."""
-    from backend.models_db import RoadSegment, RoadInspectionHistory
+    """Synchronize stored road geometry from the bundled OSM-derived corridor catalog."""
+    from backend.models_db import RoadSegment
     from backend.gis_belagavi import BELAGAVI_ROAD_SEGMENTS
     db = SessionLocal()
     try:
-        existing_count = db.query(RoadSegment).count()
-        if existing_count == 0:
-            for r in BELAGAVI_ROAD_SEGMENTS:
-                seg_id = r["id"]
-                prof = BELAGAVI_ROAD_CONDITIONS.get(seg_id, {"potholes": 0, "damage": 0, "condition": 95.0, "risk": "SAFE", "loc": "Belagavi"})
-                seg = RoadSegment(
-                    id=seg_id,
-                    segment_code=r["code"],
-                    name=r["name"],
-                    location=prof["loc"],
-                    road_type=r["road_type"],
-                    speed_limit=r["speed_limit"],
-                    from_node=r["from_node"],
-                    to_node=r["to_node"],
-                    start_lat=r["coordinates"][0][1],
-                    start_lon=r["coordinates"][0][0],
-                    end_lat=r["coordinates"][-1][1],
-                    end_lon=r["coordinates"][-1][0],
-                    length_m=r["length_m"],
-                    geometry_geojson=json.dumps(r["coordinates"]),
-                    surface_type=r["surface"],
-                    potholes_count=prof["potholes"],
-                    total_damage_count=prof["damage"],
-                    condition_percentage=prof["condition"],
-                    risk_classification=prof["risk"],
-                    inspection_source="Demonstration Sample",
-                    verification_status="VERIFIED",
-                    last_inspected_date=datetime.utcnow() - timedelta(days=(seg_id % 7 + 1))
+        for road in BELAGAVI_ROAD_SEGMENTS:
+            segment = db.query(RoadSegment).filter(
+                RoadSegment.segment_code == road["code"]
+            ).first()
+            if segment is None:
+                segment = db.query(RoadSegment).filter(RoadSegment.id == road["id"]).first()
+            if segment is None:
+                segment = RoadSegment(
+                    id=road["id"],
+                    segment_code=road["code"],
+                    name=road["name"],
+                    location="Belagavi, Karnataka",
+                    potholes_count=0,
+                    total_damage_count=0,
+                    condition_percentage=100.0,
+                    risk_classification="SAFE",
+                    inspection_source="OSM geometry only",
+                    verification_status="UNINSPECTED"
                 )
-                db.add(seg)
-                db.flush()
+                db.add(segment)
 
-                # Add initial demonstration inspection history record
-                hist = RoadInspectionHistory(
-                    road_segment_id=seg.id,
-                    inspection_date=seg.last_inspected_date or datetime.utcnow(),
-                    potholes_count=prof["potholes"],
-                    total_damage_count=prof["damage"],
-                    condition_percentage=prof["condition"],
-                    risk_classification=prof["risk"],
-                    inspection_source="Demonstration Sample",
-                    inspector_name="Belagavi PWD Road Health Survey",
-                    notes=f"Initial demonstration baseline inspection for {r['name']}."
-                )
-                db.add(hist)
-            db.commit()
-            print(f"[Database] Successfully seeded {len(BELAGAVI_ROAD_SEGMENTS)} Belagavi road condition records.")
-        else:
-            # Update existing segments if condition fields are default or unpopulated
-            segments = db.query(RoadSegment).all()
-            for s in segments:
-                if s.id in BELAGAVI_ROAD_CONDITIONS and (s.potholes_count is None or s.condition_percentage is None or s.condition_percentage == 95.0 and s.potholes_count == 0):
-                    prof = BELAGAVI_ROAD_CONDITIONS[s.id]
-                    s.potholes_count = prof["potholes"]
-                    s.total_damage_count = prof["damage"]
-                    s.condition_percentage = prof["condition"]
-                    s.risk_classification = prof["risk"]
-                    s.location = prof["loc"]
-                    if not s.inspection_source:
-                        s.inspection_source = "Demonstration Sample"
-                    if not s.verification_status:
-                        s.verification_status = "VERIFIED"
-                    if not s.last_inspected_date:
-                        s.last_inspected_date = datetime.utcnow() - timedelta(days=(s.id % 7 + 1))
-
-                    # Check if history exists
-                    h_cnt = db.query(RoadInspectionHistory).filter(RoadInspectionHistory.road_segment_id == s.id).count()
-                    if h_cnt == 0:
-                        hist = RoadInspectionHistory(
-                            road_segment_id=s.id,
-                            inspection_date=s.last_inspected_date or datetime.utcnow(),
-                            potholes_count=prof["potholes"],
-                            total_damage_count=prof["damage"],
-                            condition_percentage=prof["condition"],
-                            risk_classification=prof["risk"],
-                            inspection_source="Demonstration Sample",
-                            inspector_name="Belagavi PWD Road Health Survey",
-                            notes=f"Initial demonstration baseline inspection for {s.name}."
-                        )
-                        db.add(hist)
-            db.commit()
-    except Exception as e:
+            coordinates = road["coordinates"]
+            start = coordinates[0]
+            end = coordinates[-1]
+            segment.segment_code = road["code"]
+            segment.name = road["name"]
+            segment.road_type = road.get("road_type") or "Road"
+            segment.speed_limit = road.get("speed_limit") or 50
+            segment.from_node = None
+            segment.to_node = None
+            segment.start_lat = start[1]
+            segment.start_lon = start[0]
+            segment.end_lat = end[1]
+            segment.end_lon = end[0]
+            segment.length_m = road["length_m"]
+            segment.geometry_geojson = json.dumps(coordinates, separators=(",", ":"))
+            segment.osm_names = json.dumps(road.get("osm_names") or [], separators=(",", ":"))
+            segment.geometry_source = road["geometry_source"]
+            updated_at = road.get("geometry_updated_at")
+            if updated_at:
+                segment.geometry_updated_at = datetime.fromisoformat(
+                    updated_at.replace("Z", "+00:00")
+                ).replace(tzinfo=None)
+            segment.surface_type = road.get("surface") or "Unknown"
+            if segment.inspection_source in (None, "Demonstration Sample"):
+                segment.potholes_count = 0
+                segment.total_damage_count = 0
+                segment.condition_percentage = 100.0
+                segment.risk_classification = "SAFE"
+                segment.inspection_source = "OSM geometry only"
+                segment.verification_status = "UNINSPECTED"
+        db.commit()
+        print(f"[Database] Synchronized {len(BELAGAVI_ROAD_SEGMENTS)} OSM road geometries.")
+    except Exception as exc:
         db.rollback()
-        print(f"[Database] Seeding error: {e}")
+        raise RuntimeError(f"Unable to synchronize OSM road geometries: {exc}") from exc
     finally:
         db.close()
 

@@ -18,7 +18,7 @@ Modern civil infrastructure management is challenged by fragmented citizen compl
 6. **Temporal Database Monitoring & Inspection History**: Persistent database tracking condition percentage and pothole counts across inspections over time.
 7. **GIS-Based 3-Color Road Condition Map**: Interactive geospatial map of Belagavi City, Karnataka, color-coding road corridors (**RED** for Risky, **YELLOW** for Moderate, **GREEN** for Safe).
 8. **Structured Road Condition Table & History Modal**: Complete directory of monitored road corridors with search, risk filtering, and historical timeline inspection.
-9. **Damage-Aware Multi-Route Risk Finder**: Dijkstra/A* routing engine that queries verified road condition records, penalizes hazardous segments, and recommends low-risk driving corridors.
+9. **Damage-Aware Multi-Route Risk Finder**: OSRM driving alternatives over OpenStreetMap road geometry, scored against current verified damage and road-condition records.
 10. **Executive Overview Dashboard**: Strictly placed as the **last section** in the platform navigation, rendering a live 3-tier condition distribution chart and 9 real-time summary KPI cards directly from the database.
 
 ---
@@ -89,9 +89,9 @@ Modern civil infrastructure management is challenged by fragmented citizen compl
 | **Authority Verification Desk** | Dedicated workflow to review citizen grievances, inspect video, and **Accept** (update official DB) or **Reject** (archive). | FastAPI, SQLAlchemy ORM |
 | **Authority Direct Inspection** | Independent inspection interface allowing municipal authorities to inspect roads and commit official updates directly. | FastAPI, OpenCV, SQLite |
 | **Database-Backed History** | Maintains road records and temporal inspection history over time, preventing duplicate road records. | SQLite, SQLAlchemy, Pydantic |
-| **GIS Road Condition Map** | Interactive Leaflet GIS mapping with 3-tier colored road polylines (**Red / Yellow / Green**) and interactive defect pins. | Leaflet.js, OpenStreetMap Basemap |
+| **GIS Road Condition Map** | Interactive Leaflet map with 30 OSRM-derived Belagavi road corridors, live 3-tier condition colors, and verified-damage pins. | Leaflet.js, OSRM, OpenStreetMap |
 | **Road Condition Table** | Structured road register with search, risk filter, condition progress bars, and historical progression modals. | JavaScript DOM, Modal Controller |
-| **Multi-Route Risk Finder** | Evaluates alternative paths between junctions, flags risky segments, and recommends low-risk corridors using verified database health. | Dijkstra / A* Traversal, Belagavi Topology |
+| **Multi-Route Risk Finder** | Renders only distinct drivable alternatives returned by OSRM and recommends a route using verified damage exposure and distance. | OSRM, GeoJSON, SQLAlchemy |
 | **Duplicate Report Detection** | Multi-signal engine (GPS Haversine, OpenCV dHash, MobileNetV3 deep embeddings, RDD2022 compatibility) consolidating duplicate reports into single physical damage records. | PyTorch MobileNetV3, OpenCV, Haversine |
 | **Authority Duplicate Review Desk** | Side-by-side visual photo comparison and audit desk to Confirm Duplicates, Mark Separate Damage, or Reject invalid submissions. | Tailwind CSS, FastAPI, SQLAlchemy ORM |
 | **Overview Dashboard** | Strictly placed as the **last section**; renders a Doughnut chart of road distribution and 9 real-time KPI cards from `/api/dashboard/stats`. | Chart.js, FastAPI Aggregations |
@@ -343,7 +343,15 @@ Located in the Authority Portal under **Duplicate Management & Verification** (`
 
 ### 7.6 Downstream Impact on GIS Map & Multi-Route Risk Finder
 - **GIS Map Pins**: The public Leaflet GIS map queries `/api/physical-damage`, which exclusively renders consolidated `PhysicalDamageRecord`s with `verification_status == 'Verified'`. Duplicate citizen reports do not generate redundant pins.
-- **Route Risk Scoring**: The Multi-Route Risk Finder queries consolidated physical records per road segment. This ensures a road segment with 10 citizen reports of the same single pothole receives a damage count of 1, preventing false elevation of route risk exposure.
+- **Road Geometry**: The shared road catalog contains 30 full road geometries routed by OSRM over OpenStreetMap data. The database stores those geometries and their source/update metadata; the public and authority maps read the same `/api/roads/condition` data.
+- **Route Risk Scoring**: Each OSRM alternative is checked against verified, unrepaired physical-damage GPS records within 35 m and matching database road corridors. Repaired, closed, unverified, and rejected records do not contribute to active exposure.
+- **Route Selection**: The recommendation score is `distance_km + 0.05 × exposure_score`. It is an explicit distance-versus-risk tradeoff, not a shortest-path graph approximation.
+
+### 7.7 OpenStreetMap Geometry & OSRM Routing
+- The public road-condition map uses a bundled snapshot of 30 real OSRM route geometries so it can load without making 30 live requests. Refresh it with `python scripts/sync_osm_roads.py`; a successful refresh is required before the updated catalog is applied to the database at the next application startup.
+- Set `ROADVISION_OSRM_URL` to a self-hosted OSRM-compatible endpoint when available. The default is `https://router.project-osrm.org`; `ROADVISION_OSRM_TIMEOUT` controls the request timeout in seconds (default `12`).
+- Navigation requests use the configured OSRM service at request time. If it is unavailable or has no route, the API reports the failure and does not fall back to generated routes. The number of alternatives is whatever distinct routes OSRM returns (the public demo often returns fewer than three).
+- Keep OpenStreetMap attribution visible on maps and when displaying route geometry. The default public OSRM demo is subject to its availability and usage policy; use a suitable hosted or self-managed service for production workloads.
 
 ---
 
@@ -612,9 +620,9 @@ tests/test_tracker.py::test_persistent_unique_tracking PASSED            [100%]
 
 ### Scenario 8: Damage-Aware Multi-Route Risk Finder
 1. Navigate to **Multi-Route Risk Finder**.
-2. Select Origin (e.g., `Rani Chennamma Circle`) and Destination (e.g., `Udyambag Industrial Hub`).
-3. Click **Calculate Low-Risk Multiple Paths**.
-4. Notice how the routing engine penalizes risky corridors, highlights severe pothole hazard pins in Red, and recommends the safest low-exposure route in **Emerald Green**.
+2. Select an origin and destination from the OSM road-location selectors, or click two points on the map.
+3. Click **Calculate OSRM Routes & Risk**.
+4. Inspect the actual OSRM GeoJSON routes, returned distances and durations, verified-damage markers, risk colors, and the distance/risk recommendation score. The result count may be below three when OSRM has no distinct alternatives.
 
 ### Scenario 9: Executive Overview Dashboard (The Last Section)
 1. Navigate to **Overview Dashboard** (the final item in the sidebar navigation).

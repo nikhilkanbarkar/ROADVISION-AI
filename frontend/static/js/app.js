@@ -8,6 +8,7 @@
 let categoryChart = null;
 let severityChart = null;
 let activeInspectionId = null;
+let routeLocations = Object.create(null);
 
 // User Session & Role State
 let currentUser = {
@@ -42,12 +43,11 @@ async function loadInspectionLocations() {
         if (data.status !== "success" || !Array.isArray(data.locations) || data.locations.length === 0) {
             throw new Error("Location service returned no Belagavi locations");
         }
+        populateNavigationLocations(data.locations);
 
         selectors.forEach(select => {
-            const junctionGroup = document.createElement("optgroup");
-            junctionGroup.label = "Multi-Route Finder Locations";
             const corridorGroup = document.createElement("optgroup");
-            corridorGroup.label = "Belagavi Road Corridors";
+            corridorGroup.label = "OSM Road Corridors";
 
             data.locations.forEach(location => {
                 const option = document.createElement("option");
@@ -58,11 +58,11 @@ async function loadInspectionLocations() {
                 option.dataset.longitude = location.longitude;
                 if (location.road_type) option.dataset.roadType = location.road_type;
                 if (location.speed_limit) option.dataset.speedLimit = location.speed_limit;
-                (location.kind === "junction" ? junctionGroup : corridorGroup).appendChild(option);
+                corridorGroup.appendChild(option);
             });
 
-            select.replaceChildren(junctionGroup, corridorGroup);
-            select.value = "junction:CHEN_CIRC";
+            select.replaceChildren(corridorGroup);
+            select.value = data.locations[0].id;
             if (!select.value && select.options.length > 0) select.selectedIndex = 0;
             select.disabled = false;
             select.addEventListener("change", () => applyInspectionLocation(select.id));
@@ -74,7 +74,71 @@ async function loadInspectionLocations() {
             select.replaceChildren(new Option("Belagavi locations unavailable — refresh to retry", ""));
             select.disabled = true;
         });
+        ["nav-origin-select", "nav-dest-select"].forEach(id => {
+            const select = document.getElementById(id);
+            if (select) {
+                select.replaceChildren(new Option("OSM road locations unavailable", ""));
+                select.disabled = true;
+            }
+        });
     }
+}
+
+function populateNavigationLocations(locations) {
+    const originSelect = document.getElementById("nav-origin-select");
+    const destinationSelect = document.getElementById("nav-dest-select");
+    if (!originSelect || !destinationSelect) return;
+
+    routeLocations = Object.create(null);
+    locations.forEach(location => {
+        routeLocations[location.id] = {
+            id: location.id,
+            name: location.name,
+            lat: Number(location.latitude),
+            lon: Number(location.longitude)
+        };
+    });
+
+    const populate = select => {
+        const group = document.createElement("optgroup");
+        group.label = "OSM Road Locations";
+        locations.forEach(location => {
+            const option = new Option(location.name, location.id);
+            group.appendChild(option);
+        });
+        select.replaceChildren(group);
+        select.disabled = locations.length < 2;
+    };
+    populate(originSelect);
+    populate(destinationSelect);
+
+    const origin = locations[0];
+    const destination = locations[locations.length - 1];
+    originSelect.value = origin.id;
+    destinationSelect.value = destination.id;
+    populateRoutePresets(locations);
+}
+
+function populateRoutePresets(locations) {
+    const container = document.getElementById("route-presets");
+    if (!container) return;
+    container.replaceChildren();
+    if (locations.length < 2) return;
+
+    const pairs = [
+        [locations[0], locations[locations.length - 1]],
+        [locations[Math.floor(locations.length / 4)], locations[Math.floor(locations.length * 3 / 4)]]
+    ];
+    pairs.forEach(([origin, destination]) => {
+        if (!origin || !destination || origin.id === destination.id) return;
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "px-2.5 py-1.5 text-left text-xs bg-slate-50 hover:bg-blue-50 hover:text-blue-700 rounded-lg border border-slate-200 transition font-medium truncate";
+        button.textContent = `${origin.name} → ${destination.name}`;
+        button.title = button.textContent;
+        button.addEventListener("click", () => setRoutePreset(origin.id, destination.id));
+        container.appendChild(button);
+    });
 }
 
 function getSelectedInspectionLocation(selectId) {
@@ -1538,26 +1602,6 @@ async function loadBenchmarkMetrics() {
 // ==========================================
 // 12. BELAGAVI RISK-AWARE MULTI-PATH ROUTE NAVIGATION
 // ==========================================
-const BELAGAVI_JUNCTION_COORDS = {
-    "CHEN_CIRC": { name: "Rani Chennamma Circle (City Center)", lat: 15.8574, lon: 74.5065 },
-    "BOGARVES": { name: "Bogarves Circle", lat: 15.8540, lon: 74.5020 },
-    "SAMBHAJI": { name: "Sambhaji Chowk (RTO / College Rd)", lat: 15.8480, lon: 74.5050 },
-    "TILAKWADI_1": { name: "1st Railway Gate, Tilakwadi", lat: 15.8440, lon: 74.5010 },
-    "TILAKWADI_3": { name: "3rd Railway Gate (Khanapur Rd)", lat: 15.8360, lon: 74.4960 },
-    "RPD_CROSS": { name: "RPD College Cross", lat: 15.8320, lon: 74.4910 },
-    "UDYAMBAG": { name: "Udyambag Industrial Hub", lat: 15.8200, lon: 74.4820 },
-    "CAMP_CHURCH": { name: "Camp St. Mary's Church", lat: 15.8610, lon: 74.4980 },
-    "CIVIL_HOSP": { name: "Civil Hospital (BIMS)", lat: 15.8640, lon: 74.5120 },
-    "FORT_LAKE": { name: "Belagavi Fort Lake Junction", lat: 15.8660, lon: 74.5200 },
-    "KANBARGI_CR": { name: "Kanbargi Cross (NH-48)", lat: 15.8920, lon: 74.5420 },
-    "RAMTEERTH": { name: "Ramteerth Nagar / Auto Nagar", lat: 15.8820, lon: 74.5480 },
-    "GANDHI_NGR": { name: "Gandhi Nagar Bypass (NH-48)", lat: 15.8650, lon: 74.5530 },
-    "HALAGA_INT": { name: "Halaga Interchange (Suvarna Soudha)", lat: 15.8290, lon: 74.5580 },
-    "SHAHAPUR": { name: "Shahapur Central Market", lat: 15.8420, lon: 74.5150 },
-    "VADGAON": { name: "Vadgaon Main Junction", lat: 15.8340, lon: 74.5120 },
-    "HINDWADI": { name: "Hindwadi Goaves Cross", lat: 15.8460, lon: 74.4940 }
-};
-
 let routeNavMap = null;
 let routeNavLayerGroup = null;
 let currentRouteData = null;
@@ -1574,8 +1618,7 @@ function initRouteNavMap() {
     if (!container) return;
 
     routeNavMap = L.map('route-nav-map', {
-        zoomControl: true,
-        attributionControl: false
+        zoomControl: true
     }).setView([15.8497, 74.4977], 13);
 
     createMapTileLayer().addTo(routeNavMap);
@@ -1585,29 +1628,31 @@ function initRouteNavMap() {
     routeNavMap.on("click", (e) => {
         const clickedLat = e.latlng.lat;
         const clickedLon = e.latlng.lng;
-
-        // Find closest junction
-        let bestKey = "CHEN_CIRC";
-        let minDist = 999999.0;
-        for (const [key, junc] of Object.entries(BELAGAVI_JUNCTION_COORDS)) {
-            const d = Math.hypot(junc.lat - clickedLat, junc.lon - clickedLon);
-            if (d < minDist) {
-                minDist = d;
-                bestKey = key;
-            }
+        const location = {
+            id: `map:${clickPickMode}`,
+            name: `Map point ${clickedLat.toFixed(5)}, ${clickedLon.toFixed(5)}`,
+            lat: clickedLat,
+            lon: clickedLon
+        };
+        routeLocations[location.id] = location;
+        const select = document.getElementById(
+            clickPickMode === "origin" ? "nav-origin-select" : "nav-dest-select"
+        );
+        if (select) {
+            const previousMapOption = select.querySelector('option[data-map-point="true"]');
+            if (previousMapOption) previousMapOption.remove();
+            const option = new Option(`${location.name} (OSRM will snap to road)`, location.id);
+            option.dataset.mapPoint = "true";
+            select.add(option);
+            select.value = location.id;
         }
 
-        const origSelect = document.getElementById("nav-origin-select");
-        const destSelect = document.getElementById("nav-dest-select");
-
         if (clickPickMode === "origin") {
-            if (origSelect) origSelect.value = bestKey;
             clickPickMode = "destination";
-            showRouteToast(`🟢 Start Origin set to: ${BELAGAVI_JUNCTION_COORDS[bestKey].name}. Now click map for Destination.`);
+            showRouteToast(`Origin selected at ${location.name}. Click the map for a destination.`);
         } else {
-            if (destSelect) destSelect.value = bestKey;
             clickPickMode = "origin";
-            showRouteToast(`🏁 Destination set to: ${BELAGAVI_JUNCTION_COORDS[bestKey].name}. Calculating paths...`);
+            showRouteToast(`Destination selected at ${location.name}. Calculating OSRM routes...`);
             calculateSafeRoute();
         }
     });
@@ -1624,28 +1669,32 @@ function showRouteToast(msg) {
 function setRoutePreset(origKey, destKey) {
     const oSel = document.getElementById("nav-origin-select");
     const dSel = document.getElementById("nav-dest-select");
+    if (!routeLocations[origKey] || !routeLocations[destKey]) return;
     if (oSel) oSel.value = origKey;
     if (dSel) dSel.value = destKey;
     calculateSafeRoute();
 }
 
 async function calculateSafeRoute() {
-    const origCode = document.getElementById("nav-origin-select").value;
-    const destCode = document.getElementById("nav-dest-select").value;
+    const originSelect = document.getElementById("nav-origin-select");
+    const destinationSelect = document.getElementById("nav-dest-select");
+    if (!originSelect || !destinationSelect) return;
+    const orig = routeLocations[originSelect.value];
+    const dest = routeLocations[destinationSelect.value];
 
-    if (origCode === destCode) {
-        alert("Please select distinct Origin and Destination junctions across Belagavi.");
+    if (!orig || !dest) {
+        alert("Select road locations loaded from the OSM road catalog.");
         return;
     }
-
-    const orig = BELAGAVI_JUNCTION_COORDS[origCode];
-    const dest = BELAGAVI_JUNCTION_COORDS[destCode];
-    if (!orig || !dest) return;
+    if (orig.id === dest.id || (Math.abs(orig.lat - dest.lat) < 0.00001 && Math.abs(orig.lon - dest.lon) < 0.00001)) {
+        alert("Please select distinct origin and destination road locations.");
+        return;
+    }
 
     const btn = document.getElementById("btn-calc-route");
     if (btn) {
         btn.disabled = true;
-        btn.innerHTML = `<span class="animate-spin inline-block mr-2">&#9696;</span> Correlating Belagavi Road Damage & Generating Multiple Paths...`;
+        btn.innerHTML = `<span class="animate-spin inline-block mr-2">&#9696;</span> Requesting real OSRM road routes...`;
     }
 
     const formData = new FormData();
@@ -1665,15 +1714,15 @@ async function calculateSafeRoute() {
             currentRouteData = data;
             displayRouteRecommendationResults(data);
         } else {
-            alert("Routing notice: " + (data.detail || data.message || "Failed to find road network path."));
+            alert("Routing notice: " + (data.detail || data.message || "OSRM could not find a road route."));
         }
     } catch(e) {
         console.error("Navigation error:", e);
-        alert("Failed to compute low-risk routes. Please try again.");
+        alert("Failed to contact OSRM. Check the routing service connection and retry.");
     } finally {
         if (btn) {
             btn.disabled = false;
-            btn.innerHTML = `<i data-lucide="navigation" class="w-4 h-4"></i><span>Calculate Low-Risk Multiple Paths</span>`;
+            btn.innerHTML = `<i data-lucide="navigation" class="w-4 h-4"></i><span>Calculate OSRM Routes & Risk</span>`;
             if (window.lucide) lucide.createIcons();
         }
     }
@@ -1689,7 +1738,12 @@ function displayRouteRecommendationResults(data) {
     const recTitle = document.getElementById("route-recommendation-title");
     const compText = document.getElementById("route-comparison-text");
     if (recTitle) recTitle.textContent = "AI Road Damage Risk Evaluation & Route Selection";
-    if (compText) compText.textContent = data.comparison_summary || "Multi-path safety assessment completed.";
+    if (compText) {
+        const routeCount = Number(data.route_count || (data.routes || []).length);
+        const availableRoutes = `${routeCount} distinct OSRM route${routeCount === 1 ? "" : "s"} returned`;
+        const scoring = data.scoring_method ? ` Scoring: ${data.scoring_method}.` : "";
+        compText.textContent = `${data.comparison_summary || "Route risk assessment completed."} ${availableRoutes}.${scoring}`;
+    }
 
     // Render Cards Grid
     const cardsGrid = document.getElementById("routes-cards-grid");
@@ -1711,8 +1765,7 @@ function displayRouteRecommendationResults(data) {
             const colorStripe = `<div class="absolute top-0 left-0 right-0 h-1.5" style="background-color: ${r.color};"></div>`;
 
             let riskBadgeClass = "bg-emerald-100 text-emerald-800 border-emerald-300";
-            if (r.risk_level === "Critical") riskBadgeClass = "bg-rose-100 text-rose-800 border-rose-300";
-            else if (r.risk_level === "High") riskBadgeClass = "bg-orange-100 text-orange-800 border-orange-300";
+            if (r.risk_level === "Critical" || r.risk_level === "High") riskBadgeClass = "bg-rose-100 text-rose-800 border-rose-300";
             else if (r.risk_level === "Moderate") riskBadgeClass = "bg-amber-100 text-amber-800 border-amber-300";
 
             card.innerHTML = `
@@ -1720,7 +1773,7 @@ function displayRouteRecommendationResults(data) {
                 <div class="flex items-center justify-between pt-1">
                     <span class="text-[11px] font-extrabold uppercase flex items-center space-x-1.5" style="color: ${r.color};">
                         <span class="w-2.5 h-2.5 rounded-full inline-block" style="background-color: ${r.color};"></span>
-                        <span>${r.summary_badge || (isRec ? '⭐ Safest Path' : 'Alternative')}</span>
+                        <span>${r.summary_badge || (isRec ? '⭐ Recommended route' : 'Alternative')}</span>
                     </span>
                     <span class="px-2 py-0.5 rounded text-[10px] font-bold border ${riskBadgeClass}">
                         ${r.risk_level} Risk (${r.exposure_score}/100)
@@ -1729,7 +1782,7 @@ function displayRouteRecommendationResults(data) {
 
                 <div class="text-sm font-extrabold text-slate-900 leading-snug">${r.name}</div>
 
-                <div class="grid grid-cols-4 gap-1.5 text-center text-xs">
+                <div class="grid grid-cols-5 gap-1.5 text-center text-xs">
                     <div class="bg-white p-2 rounded-lg border border-slate-200 shadow-2xs">
                         <span class="text-[9px] text-slate-400 block uppercase font-bold">Distance</span>
                         <strong class="text-slate-800 font-black">${r.distance_km} km</strong>
@@ -1740,11 +1793,15 @@ function displayRouteRecommendationResults(data) {
                     </div>
                     <div class="bg-white p-2 rounded-lg border border-slate-200 shadow-2xs">
                         <span class="text-[9px] text-slate-400 block uppercase font-bold">Exposure</span>
-                        <strong class="font-black ${r.exposure_score > 30 ? 'text-rose-600' : 'text-emerald-700'}">${r.exposure_score}</strong>
+                        <strong class="font-black" style="color: ${r.risk_color || r.color};">${r.exposure_score}</strong>
+                    </div>
+                    <div class="bg-white p-2 rounded-lg border border-slate-200 shadow-2xs">
+                        <span class="text-[9px] text-slate-400 block uppercase font-bold">Score</span>
+                        <strong class="text-slate-800 font-black">${r.recommendation_score}</strong>
                     </div>
                     <div class="bg-white p-2 rounded-lg border border-slate-200 shadow-2xs">
                         <span class="text-[9px] text-slate-400 block uppercase font-bold">Potholes</span>
-                        <strong class="font-black ${r.severe_defects > 0 ? 'text-rose-600' : 'text-slate-700'}">${r.severe_defects}</strong>
+                        <strong class="font-black ${r.potholes_count > 0 ? 'text-rose-600' : 'text-slate-700'}">${r.potholes_count}</strong>
                     </div>
                 </div>
 
@@ -1754,7 +1811,7 @@ function displayRouteRecommendationResults(data) {
 
                 <div class="pt-2 flex items-center justify-between">
                     <button type="button" onclick="focusRouteOnMap(${r.route_id})" class="w-full py-1.5 text-center rounded-lg text-xs font-bold transition shadow-sm border" style="background-color: ${isRec ? r.color : '#f8fafc'}; color: ${isRec ? '#ffffff' : r.color}; border-color: ${r.color};">
-                        <span>${isRec ? 'Selected Safest Route' : 'Inspect Path on Map'}</span>
+                        <span>${isRec ? 'Recommended Route' : 'Inspect Path on Map'}</span>
                     </button>
                 </div>
             `;
@@ -1764,7 +1821,7 @@ function displayRouteRecommendationResults(data) {
         });
     }
 
-    // Render Map Polylines with DISTINCT VIBRANT COLORS
+    // Render road-following paths with colors tied to their calculated risk.
     initRouteNavMap();
     if (routeNavMap && routeNavLayerGroup) {
         routeNavLayerGroup.clearLayers();
@@ -1780,20 +1837,24 @@ function displayRouteRecommendationResults(data) {
 
         const routes = data.routes || [];
 
-        // Render from last to first so Route 1 (Safest) is drawn on top!
+        // Draw alternatives first so the recommended path remains visible on top.
         const reverseRoutes = [...routes].reverse();
 
         reverseRoutes.forEach(r => {
             const isRec = r.is_recommended || (r.route_id === 1);
             const polyline = r.polyline || [];
             polyline.forEach(c => allBounds.push(c));
+            const risk = String(r.risk_level || "").toLowerCase();
+            const routeColor = r.risk_color || r.color || (
+                risk === "critical" || risk === "high" ? "#dc2626" :
+                    risk === "moderate" ? "#d97706" : "#059669"
+            );
 
-            // Polyline styling with distinct color
             const line = L.polyline(polyline, {
-                color: r.color,
-                weight: isRec ? 7 : 5,
-                opacity: isRec ? 0.95 : 0.80,
-                dashArray: null,
+                color: routeColor,
+                weight: isRec ? 8 : 5,
+                opacity: isRec ? 0.98 : 0.82,
+                dashArray: isRec ? null : "8 6",
                 lineCap: 'round',
                 lineJoin: 'round'
             }).addTo(routeNavLayerGroup);
@@ -1801,13 +1862,13 @@ function displayRouteRecommendationResults(data) {
             // Detailed Interactive Popup
             line.bindPopup(`
                 <div class="p-2 space-y-1.5 min-w-[200px]">
-                    <div class="flex items-center space-x-1.5 font-black text-xs" style="color: ${r.color};">
-                        <span class="w-2.5 h-2.5 rounded-full" style="background-color: ${r.color};"></span>
-                        <span>${r.name}</span>
+                    <div class="flex items-center space-x-1.5 font-black text-xs" style="color: ${routeColor};">
+                        <span class="w-2.5 h-2.5 rounded-full" style="background-color: ${routeColor};"></span>
+                        <span>${isRec ? 'Recommended' : 'Alternative'} · ${r.risk_level || 'Unknown'} risk</span>
                     </div>
                     <div class="text-[11px] text-slate-700">
                         <div><strong>Distance:</strong> ${r.distance_km} km | <strong>Time:</strong> ${r.estimated_time_min} min</div>
-                        <div><strong>Road Distress Exposure:</strong> <span class="font-bold ${r.exposure_score > 30 ? 'text-rose-600' : 'text-emerald-700'}">${r.exposure_score}/100 (${r.risk_level})</span></div>
+                        <div><strong>Road Distress Exposure:</strong> <span class="font-bold" style="color: ${routeColor};">${r.exposure_score}/100 (${r.risk_level})</span></div>
                         <div><strong>Severe Potholes:</strong> ${r.severe_defects} cavities</div>
                     </div>
                     <div class="text-[10px] text-slate-500 italic pt-1 border-t border-slate-200">
@@ -1824,8 +1885,8 @@ function displayRouteRecommendationResults(data) {
                 const pBtn = document.createElement("button");
                 pBtn.type = "button";
                 pBtn.className = "px-2 py-1 rounded text-[11px] font-bold border transition";
-                pBtn.style.borderColor = r.color;
-                pBtn.style.color = r.color;
+                pBtn.style.borderColor = routeColor;
+                pBtn.style.color = routeColor;
                 pBtn.style.backgroundColor = isRec ? '#ecfdf5' : '#ffffff';
                 pBtn.textContent = `Route ${r.route_id} (${r.distance_km} km)`;
                 pBtn.onclick = () => focusRouteOnMap(r.route_id);

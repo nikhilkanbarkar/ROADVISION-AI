@@ -46,6 +46,9 @@ class RoadSegment(Base):
     end_lon = Column(Float, nullable=True)
     length_m = Column(Float, default=0.0)
     geometry_geojson = Column(Text, nullable=True) # JSON coordinates string
+    osm_names = Column(Text, nullable=True) # JSON list of names reported by OSM routing steps
+    geometry_source = Column(String(100), default="OSRM/OpenStreetMap")
+    geometry_updated_at = Column(DateTime, nullable=True)
     surface_type = Column(String(50), default="Bituminous Asphalt")
 
     # Official Road Condition & Health Metrics

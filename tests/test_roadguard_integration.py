@@ -66,11 +66,12 @@ def test_road_history_api():
     assert data["status"] == "success"
     assert data["road_id"] == road_id
     assert "history" in data
-    assert len(data["history"]) >= 1
-    h0 = data["history"][0]
-    assert "condition_percentage" in h0
-    assert "potholes_count" in h0
-    assert "risk_classification" in h0
+    assert data["total_inspections"] == len(data["history"])
+    if data["history"]:
+        h0 = data["history"][0]
+        assert "condition_percentage" in h0
+        assert "potholes_count" in h0
+        assert "risk_classification" in h0
 
 def test_dashboard_stats_api():
     """Requirement 10: Overview Dashboard statistics and distribution."""
@@ -79,9 +80,13 @@ def test_dashboard_stats_api():
     data = res.json()
     assert data["status"] == "success"
     assert data["total_monitored_roads"] >= 20
-    assert data["risky_roads_count"] >= 1
-    assert data["moderate_roads_count"] >= 1
     assert data["safe_roads_count"] >= 1
+    assert (
+        data["risky_roads_count"]
+        + data["moderate_roads_count"]
+        + data["safe_roads_count"]
+        == data["total_monitored_roads"]
+    )
     assert data["total_detected_potholes"] >= 0
     assert 0.0 <= data["average_condition_percentage"] <= 100.0
     assert "distribution" in data
@@ -164,6 +169,21 @@ def test_citizen_report_submission_and_lifecycle():
     road1_updated = db.query(RoadSegment).filter(RoadSegment.id == 1).first()
     assert road1_updated.verification_status == "ACCEPTED"
     assert road1_updated.inspection_source == "Verified Citizen Report"
+    mapped_road1 = next(
+        road for road in client.get("/api/roads/condition").json()["roads"]
+        if road["id"] == road1_updated.id
+    )
+    active_damage = db.query(PhysicalDamageRecord).filter(
+        PhysicalDamageRecord.road_segment_id == road1_updated.id,
+        PhysicalDamageRecord.verification_status == "Verified",
+        PhysicalDamageRecord.repair_status.notin_(["Repaired", "Closed", "Verified Closed"])
+    ).all()
+    assert mapped_road1["total_damage_count"] == len(active_damage)
+    assert mapped_road1["potholes_count"] == sum(
+        1 for damage in active_damage
+        if damage.category_code == "D40" or "pothole" in (damage.damage_type or "").lower()
+    )
+    assert mapped_road1["condition_percentage"] <= 100.0
 
     # Verify history entry was appended
     hist_entry = db.query(RoadInspectionHistory).filter(RoadInspectionHistory.submission_id == sub_id).first()

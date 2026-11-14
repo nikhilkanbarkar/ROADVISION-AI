@@ -447,7 +447,19 @@
                         <h1 class="text-2xl font-extrabold text-slate-900">Public Road Hazard & Pothole Map</h1>
                         <p class="text-sm text-slate-600 mt-1">Commuter safety map highlighting known road distresses, potholes to avoid, and recently repaired road corridors.</p>
                     </div>
-                    <div class="flex items-center space-x-2 text-xs">
+                    <div class="flex flex-wrap items-center gap-2 text-xs">
+                        <span class="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded bg-rose-50 text-rose-800 font-bold">
+                            <span class="w-5 h-1 rounded bg-rose-600"></span>
+                            <span>Risky road</span>
+                        </span>
+                        <span class="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded bg-amber-50 text-amber-800 font-bold">
+                            <span class="w-5 h-1 rounded bg-amber-500"></span>
+                            <span>Moderate road</span>
+                        </span>
+                        <span class="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded bg-emerald-50 text-emerald-800 font-bold">
+                            <span class="w-5 h-1 rounded bg-emerald-600"></span>
+                            <span>Safe road</span>
+                        </span>
                         <span class="inline-flex items-center space-x-1 px-2.5 py-1 rounded bg-rose-100 text-rose-800 font-bold">
                             <span class="w-2 h-2 rounded-full bg-rose-600"></span>
                             <span>Severe Pothole Hazard</span>
@@ -476,10 +488,10 @@
                     <div>
                         <div class="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200 mb-2">
                             <i data-lucide="navigation" class="w-3.5 h-3.5"></i>
-                            <span>Belagavi GIS Navigation Engine &bull; Multi-Path Damage Exposure</span>
+                            <span>OSRM Routing &bull; OpenStreetMap Road Geometry</span>
                         </div>
                         <h1 class="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight">Risk-Aware Multi-Route Navigator</h1>
-                        <p class="text-sm text-slate-600 mt-1">Computes multiple alternate routes across Belagavi road network, correlates verified severe potholes and surface distress, and renders each path with distinct color codes.</p>
+                        <p class="text-sm text-slate-600 mt-1">Shows distinct drivable alternatives returned by OSRM, follows their real OpenStreetMap geometry, and colors each route using current verified road risk.</p>
                     </div>
                     <div class="flex items-center space-x-2">
                         <span class="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-100 text-slate-700 border border-slate-200">
@@ -497,26 +509,13 @@
                                 <i data-lucide="map-pin" class="w-4 h-4 text-blue-600"></i>
                                 <span>Journey Locations</span>
                             </h3>
-                            <span class="text-[11px] text-slate-500 font-medium">Click map or pick list</span>
+                            <span class="text-[11px] text-slate-500 font-medium">Choose OSM road locations; map clicks refine the route</span>
                         </div>
 
                         <!-- Quick Presets -->
                         <div>
-                            <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">Quick Belagavi Corridors</label>
-                            <div class="grid grid-cols-2 gap-1.5">
-                                <button type="button" onclick="setRoutePreset('CHEN_CIRC', 'UDYAMBAG')" class="px-2.5 py-1.5 text-left text-xs bg-slate-50 hover:bg-blue-50 hover:text-blue-700 rounded-lg border border-slate-200 transition font-medium truncate">
-                                    Chennamma &rarr; Udyambag
-                                </button>
-                                <button type="button" onclick="setRoutePreset('BOGARVES', 'RPD_CROSS')" class="px-2.5 py-1.5 text-left text-xs bg-slate-50 hover:bg-blue-50 hover:text-blue-700 rounded-lg border border-slate-200 transition font-medium truncate">
-                                    Bogarves &rarr; RPD Cross
-                                </button>
-                                <button type="button" onclick="setRoutePreset('KANBARGI_CR', 'HALAGA_INT')" class="px-2.5 py-1.5 text-left text-xs bg-slate-50 hover:bg-blue-50 hover:text-blue-700 rounded-lg border border-slate-200 transition font-medium truncate">
-                                    Kanbargi &rarr; Halaga (NH)
-                                </button>
-                                <button type="button" onclick="setRoutePreset('CAMP_CHURCH', 'SHAHAPUR')" class="px-2.5 py-1.5 text-left text-xs bg-slate-50 hover:bg-blue-50 hover:text-blue-700 rounded-lg border border-slate-200 transition font-medium truncate">
-                                    Camp &rarr; Shahapur Market
-                                </button>
-                            </div>
+                            <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">OSM Road-Location Presets</label>
+                            <div id="route-presets" class="grid grid-cols-1 gap-1.5"></div>
                         </div>
 
                         <div class="space-y-4">
@@ -525,24 +524,8 @@
                                     <span>Origin Point (Start)</span>
                                     <span class="text-[10px] text-emerald-700 font-bold bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">Start (A)</span>
                                 </label>
-                                <select id="nav-origin-select" class="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-900 font-medium shadow-sm">
-                                    <option value="CHEN_CIRC" selected>Rani Chennamma Circle (City Center)</option>
-                                    <option value="BOGARVES">Bogarves Circle</option>
-                                    <option value="SAMBHAJI">Sambhaji Chowk (RTO / College Rd)</option>
-                                    <option value="TILAKWADI_1">1st Railway Gate, Tilakwadi</option>
-                                    <option value="TILAKWADI_3">3rd Railway Gate (Khanapur Rd)</option>
-                                    <option value="RPD_CROSS">RPD College Cross</option>
-                                    <option value="UDYAMBAG">Udyambag Industrial Hub</option>
-                                    <option value="CAMP_CHURCH">Camp St. Mary's Church</option>
-                                    <option value="CIVIL_HOSP">Civil Hospital (BIMS)</option>
-                                    <option value="FORT_LAKE">Belagavi Fort Lake Junction</option>
-                                    <option value="KANBARGI_CR">Kanbargi Cross (NH-48)</option>
-                                    <option value="RAMTEERTH">Ramteerth Nagar / Auto Nagar</option>
-                                    <option value="GANDHI_NGR">Gandhi Nagar Bypass (NH-48)</option>
-                                    <option value="HALAGA_INT">Halaga Interchange (Suvarna Soudha)</option>
-                                    <option value="SHAHAPUR">Shahapur Central Market</option>
-                                    <option value="VADGAON">Vadgaon Main Junction</option>
-                                    <option value="HINDWADI">Hindwadi Goaves Cross</option>
+                                <select id="nav-origin-select" disabled class="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-900 font-medium shadow-sm">
+                                    <option value="">Loading OSM road locations...</option>
                                 </select>
                             </div>
 
@@ -551,30 +534,14 @@
                                     <span>Destination Point (End)</span>
                                     <span class="text-[10px] text-blue-700 font-bold bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200">End (B)</span>
                                 </label>
-                                <select id="nav-dest-select" class="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-900 font-medium shadow-sm">
-                                    <option value="UDYAMBAG" selected>Udyambag Industrial Hub</option>
-                                    <option value="CHEN_CIRC">Rani Chennamma Circle (City Center)</option>
-                                    <option value="BOGARVES">Bogarves Circle</option>
-                                    <option value="SAMBHAJI">Sambhaji Chowk (RTO)</option>
-                                    <option value="TILAKWADI_1">1st Railway Gate, Tilakwadi</option>
-                                    <option value="TILAKWADI_3">3rd Railway Gate (Khanapur Rd)</option>
-                                    <option value="RPD_CROSS">RPD College Cross</option>
-                                    <option value="CAMP_CHURCH">Camp St. Mary's Church</option>
-                                    <option value="CIVIL_HOSP">Civil Hospital (BIMS)</option>
-                                    <option value="FORT_LAKE">Belagavi Fort Lake Junction</option>
-                                    <option value="KANBARGI_CR">Kanbargi Cross (NH-48)</option>
-                                    <option value="RAMTEERTH">Ramteerth Nagar / Auto Nagar</option>
-                                    <option value="GANDHI_NGR">Gandhi Nagar Bypass (NH-48)</option>
-                                    <option value="HALAGA_INT">Halaga Interchange (Suvarna Soudha)</option>
-                                    <option value="SHAHAPUR">Shahapur Central Market</option>
-                                    <option value="VADGAON">Vadgaon Main Junction</option>
-                                    <option value="HINDWADI">Hindwadi Goaves Cross</option>
+                                <select id="nav-dest-select" disabled class="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-900 font-medium shadow-sm">
+                                    <option value="">Loading OSM road locations...</option>
                                 </select>
                             </div>
 
                             <button id="btn-calc-route" onclick="calculateSafeRoute()" class="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm rounded-xl shadow-md shadow-blue-600/20 transition flex items-center justify-center space-x-2">
                                 <i data-lucide="navigation" class="w-4 h-4"></i>
-                                <span>Calculate Low-Risk Multiple Paths</span>
+                                <span>Calculate OSRM Routes & Risk</span>
                             </button>
                         </div>
 
@@ -582,24 +549,31 @@
                         <div class="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-2 text-xs text-slate-600">
                             <div class="font-bold text-slate-800 flex items-center space-x-1.5">
                                 <i data-lucide="palette" class="w-3.5 h-3.5 text-blue-600"></i>
-                                <span>Path Color Legend on Map:</span>
+                                <span>Route Risk Colors:</span>
                             </div>
                             <div class="space-y-1.5 pt-1">
                                 <div class="flex items-center space-x-2">
-                                    <span class="w-3.5 h-3.5 rounded-full bg-emerald-600 inline-block shrink-0 shadow-sm"></span>
-                                    <span><strong>Route 1 (Emerald):</strong> Lowest Damage Exposure (Safest)</span>
+                                    <span class="w-5 h-1 rounded bg-rose-600 inline-block shrink-0 shadow-sm"></span>
+                                    <span><strong>Red:</strong> High / critical road risk</span>
                                 </div>
                                 <div class="flex items-center space-x-2">
-                                    <span class="w-3.5 h-3.5 rounded-full bg-blue-600 inline-block shrink-0 shadow-sm"></span>
-                                    <span><strong>Route 2 (Blue):</strong> Alternate Corridor A</span>
+                                    <span class="w-5 h-1 rounded bg-amber-500 inline-block shrink-0 shadow-sm"></span>
+                                    <span><strong>Yellow:</strong> Moderate road risk</span>
                                 </div>
                                 <div class="flex items-center space-x-2">
-                                    <span class="w-3.5 h-3.5 rounded-full bg-amber-600 inline-block shrink-0 shadow-sm"></span>
-                                    <span><strong>Route 3 (Amber):</strong> Alternate Corridor B</span>
+                                    <span class="w-5 h-1 rounded bg-emerald-600 inline-block shrink-0 shadow-sm"></span>
+                                    <span><strong>Green:</strong> Low road risk</span>
+                                </div>
+                                <div class="flex items-center space-x-2">
+                                    <span class="w-5 h-1 rounded bg-slate-700 inline-block shrink-0 shadow-sm"></span>
+                                    <span><strong>Thicker line:</strong> Recommended route</span>
                                 </div>
                                 <div class="flex items-center space-x-2 pt-1 border-t border-slate-200/60">
                                     <span class="w-3 h-3 rounded-full bg-rose-600 inline-block shrink-0 animate-ping"></span>
                                     <span class="text-rose-700 font-bold">Pothole Hazard Pin: Verified Cavity</span>
+                                </div>
+                                <div class="pt-1 text-[10px] text-slate-500">
+                                    OSRM uses OpenStreetMap road data; only distinct alternatives returned by the routing service are shown.
                                 </div>
                             </div>
                         </div>
@@ -610,10 +584,10 @@
                         <div id="route-results-placeholder" class="text-center py-16 text-slate-500">
                             <i data-lucide="compass" class="w-12 h-12 mx-auto text-slate-300 mb-3 animate-spin" style="animation-duration: 10s;"></i>
                             <div class="font-bold text-slate-700 text-sm">Select Origin & Destination to Calculate Safest Routes</div>
-                            <div class="text-xs text-slate-400 mt-1">AI correlates verified physical damage records with Belagavi road network corridors</div>
+                            <div class="text-xs text-slate-400 mt-1">OSRM route geometry is evaluated against verified damage and live road-condition records.</div>
                             <div class="mt-4 inline-flex items-center space-x-2 px-3 py-1.5 rounded-lg bg-blue-50 text-blue-700 text-xs font-semibold">
                                 <i data-lucide="mouse-pointer" class="w-3.5 h-3.5"></i>
-                                <span>Tip: Click on map below to set Start and End points directly</span>
+                                <span>After the first route loads, click the map to set road-snapped Start and End points</span>
                             </div>
                         </div>
 
@@ -638,7 +612,7 @@
                                     <div class="flex items-center space-x-3">
                                         <span class="font-bold text-slate-700 flex items-center space-x-1">
                                             <i data-lucide="layers" class="w-3.5 h-3.5 text-blue-600"></i>
-                                            <span>Multi-Path Belagavi Map View</span>
+                                            <span>OSRM Road Geometry</span>
                                         </span>
                                         <span id="route-active-filter-pill" class="px-2 py-0.5 rounded font-bold text-[10px] bg-white border border-slate-200 text-slate-600">
                                             Showing All Paths

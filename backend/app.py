@@ -14,7 +14,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
-from sqlalchemy import func, desc
+from sqlalchemy import func, desc, or_
 
 from backend.config import (
     UPLOADS_DIR,
@@ -33,8 +33,9 @@ from backend.models_db import (
 )
 from backend.gis_belagavi import (
     is_within_belagavi, match_defect_to_belagavi_segment,
-    recommend_best_route, BELAGAVI_ROAD_SEGMENTS, BELAGAVI_JUNCTIONS,
-    BELAGAVI_CENTER, BELAGAVI_BBOX, BELAGAVI_CITY_POLYGON
+    recommend_best_route, BELAGAVI_ROAD_SEGMENTS,
+    BELAGAVI_CENTER, BELAGAVI_BBOX, BELAGAVI_CITY_POLYGON,
+    RoutingServiceError, NoRouteError, OSM_ATTRIBUTION
 )
 from backend.detector import detector
 from backend.tracker import process_video_inspection
@@ -903,35 +904,46 @@ async def save_video_analysis_record(
 # 3. INSPECTIONS & DEFECTS QUERY ENDPOINTS
 # ==========================================
 @app.get("/api/inspection/locations")
-def get_inspection_locations():
-    """Returns selectable Belagavi junctions and road corridors for inspection forms."""
-    locations = [
-        {
-            "id": f"junction:{key}",
-            "name": junction["name"],
-            "latitude": junction["lat"],
-            "longitude": junction["lon"],
-            "kind": "junction"
-        }
-        for key, junction in BELAGAVI_JUNCTIONS.items()
-    ]
-
-    for segment in BELAGAVI_ROAD_SEGMENTS:
-        coordinates = segment.get("coordinates") or []
-        if not coordinates:
+def get_inspection_locations(db: Session = Depends(get_db)):
+    """Return selectable points sampled from the shared, OSM-derived road geometries."""
+    roads = db.query(RoadSegment).order_by(RoadSegment.id).all()
+    locations = []
+    seen_coordinates = set()
+    position_names = (
+        ("start", "Start"),
+        ("middle", "Along"),
+        ("end", "End")
+    )
+    for road in roads:
+        coordinates = json.loads(road.geometry_geojson) if road.geometry_geojson else []
+        osm_names = json.loads(road.osm_names or "[]")
+        corridor_name = " / ".join(osm_names[:2]) if osm_names else road.name
+        if len(coordinates) < 2:
             continue
-        longitude, latitude = coordinates[len(coordinates) // 2]
-        locations.append({
-            "id": f"road:{segment['id']}",
-            "name": segment["name"],
-            "latitude": latitude,
-            "longitude": longitude,
-            "kind": "corridor",
-            "road_type": segment["road_type"],
-            "speed_limit": segment["speed_limit"]
-        })
-
-    return {"status": "success", "locations": locations}
+        indices = (0, len(coordinates) // 2, len(coordinates) - 1)
+        for (position_id, position_label), index in zip(position_names, indices):
+            longitude, latitude = coordinates[index]
+            if not is_within_belagavi(latitude, longitude):
+                continue
+            coordinate_key = (round(latitude, 5), round(longitude, 5))
+            if coordinate_key in seen_coordinates:
+                continue
+            seen_coordinates.add(coordinate_key)
+            locations.append({
+                "id": f"road:{road.id}:{position_id}",
+                "name": f"{corridor_name} · {position_label}",
+                "latitude": latitude,
+                "longitude": longitude,
+                "kind": "corridor",
+                "road_type": road.road_type,
+                "speed_limit": road.speed_limit,
+                "geometry_source": road.geometry_source or "OSRM/OpenStreetMap"
+            })
+    return {
+        "status": "success",
+        "source": "OSRM/OpenStreetMap road geometry",
+        "locations": locations
+    }
 
 @app.get("/api/inspections")
 def get_inspections(
@@ -1316,6 +1328,13 @@ def get_verified_physical_damage(
         query = query.filter(PhysicalDamageRecord.category_code == category_code)
     if repair_status:
         query = query.filter(PhysicalDamageRecord.repair_status == repair_status)
+    else:
+        query = query.filter(
+            or_(
+                PhysicalDamageRecord.repair_status.is_(None),
+                PhysicalDamageRecord.repair_status.notin_(["Repaired", "Closed", "Verified Closed"])
+            )
+        )
     if priority:
         query = query.filter(PhysicalDamageRecord.priority_level == priority)
 
@@ -1384,18 +1403,108 @@ def get_physical_damage_history(damage_id: int, db: Session = Depends(get_db)):
 # ==========================================
 # 4C. BELAGAVI ROAD NETWORK & GIS INFO
 # ==========================================
+def _active_verified_damage_by_road(db: Session):
+    records = db.query(PhysicalDamageRecord).filter(
+        PhysicalDamageRecord.verification_status == "Verified",
+        or_(
+            PhysicalDamageRecord.repair_status.is_(None),
+            PhysicalDamageRecord.repair_status.notin_(["Repaired", "Closed", "Verified Closed"])
+        )
+    ).all()
+    grouped = {}
+    for record in records:
+        if record.road_segment_id is not None:
+            grouped.setdefault(record.road_segment_id, []).append(record)
+    return grouped
+
+
+def _live_road_metrics(road: RoadSegment, active_records):
+    if active_records:
+        potholes = sum(
+            1 for record in active_records
+            if record.category_code == "D40" or "pothole" in (record.damage_type or "").lower()
+        )
+        severe = sum(1 for record in active_records if record.verified_severity == "Severe")
+        moderate = sum(1 for record in active_records if record.verified_severity == "Moderate")
+        minor = sum(1 for record in active_records if record.verified_severity == "Minor")
+        condition = compute_road_condition(
+            potholes_count=potholes,
+            total_damage_count=len(active_records),
+            severe_count=severe,
+            moderate_count=moderate,
+            minor_count=minor,
+            speed_limit=road.speed_limit or 50,
+            road_type=road.road_type or "Road"
+        )
+        inspection_dates = [
+            record.latest_inspection_date or record.verified_at
+            for record in active_records
+            if record.latest_inspection_date or record.verified_at
+        ]
+        return {
+            "potholes_count": potholes,
+            "total_damage_count": len(active_records),
+            "condition_percentage": condition["condition_percentage"],
+            "risk_classification": condition["risk_classification"],
+            "inspection_source": "Verified physical-damage records",
+            "verification_status": "VERIFIED",
+            "last_inspected_date": max(inspection_dates) if inspection_dates else road.last_inspected_date
+        }
+
+    if road.inspection_source in (None, "Demonstration Sample", "OSM geometry only"):
+        return {
+            "potholes_count": 0,
+            "total_damage_count": 0,
+            "condition_percentage": 100.0,
+            "risk_classification": "SAFE",
+            "inspection_source": "No verified condition reports",
+            "verification_status": "UNINSPECTED",
+            "last_inspected_date": None
+        }
+
+    condition_percentage = round(
+        road.condition_percentage if road.condition_percentage is not None else 100.0, 1
+    )
+    risk_classification = road.risk_classification or (
+        "RISKY" if condition_percentage < 50
+        else "MODERATE" if condition_percentage < 80
+        else "SAFE"
+    )
+    if condition_percentage < 50:
+        risk_classification = "RISKY"
+    elif condition_percentage < 80 and risk_classification != "RISKY":
+        risk_classification = "MODERATE"
+    return {
+        "potholes_count": road.potholes_count or 0,
+        "total_damage_count": road.total_damage_count or 0,
+        "condition_percentage": condition_percentage,
+        "risk_classification": risk_classification,
+        "inspection_source": road.inspection_source,
+        "verification_status": road.verification_status or "UNINSPECTED",
+        "last_inspected_date": road.last_inspected_date
+    }
+
+
+def _road_condition_data(db: Session, roads):
+    damage_by_road = _active_verified_damage_by_road(db)
+    metrics_by_id = {
+        road.id: _live_road_metrics(road, damage_by_road.get(road.id, []))
+        for road in roads
+    }
+    return damage_by_road, metrics_by_id
+
+
 @app.get("/api/roads/segments")
 def get_road_segments(db: Session = Depends(get_db)):
-    """Returns the topological road network segments of Belagavi City with active defect metrics."""
-    segments = db.query(RoadSegment).all()
+    """Return OSM-derived road geometry with current database-backed condition metrics."""
+    segments = db.query(RoadSegment).order_by(RoadSegment.id).all()
+    damage_by_road, metrics_by_id = _road_condition_data(db, segments)
     res = []
     for s in segments:
-        active_defects = db.query(PhysicalDamageRecord).filter(
-            PhysicalDamageRecord.road_segment_id == s.id,
-            PhysicalDamageRecord.verification_status == "Verified",
-            PhysicalDamageRecord.repair_status != "Repaired"
-        ).all()
+        active_defects = damage_by_road.get(s.id, [])
+        metrics = metrics_by_id[s.id]
         severe_cnt = sum(1 for d in active_defects if d.verified_severity == "Severe")
+        risk_classification = metrics["risk_classification"]
         res.append({
             "id": s.id,
             "code": s.segment_code,
@@ -1412,11 +1521,15 @@ def get_road_segments(db: Session = Depends(get_db)):
             "surface_type": s.surface_type,
             "active_defects_count": len(active_defects),
             "severe_defects_count": severe_cnt,
-            "potholes_count": s.potholes_count or 0,
-            "condition_percentage": round(s.condition_percentage if s.condition_percentage is not None else 90.0, 1),
-            "risk_classification": s.risk_classification or "SAFE",
-            "risk_color": "#ef4444" if (s.risk_classification == "RISKY" or (s.condition_percentage is not None and s.condition_percentage < 50)) else ("#f59e0b" if (s.risk_classification == "MODERATE" or (s.condition_percentage is not None and s.condition_percentage < 80)) else "#10b981"),
-            "inspection_source": s.inspection_source or "Demonstration Sample",
+            "potholes_count": metrics["potholes_count"],
+            "total_damage_count": metrics["total_damage_count"],
+            "condition_percentage": metrics["condition_percentage"],
+            "risk_classification": risk_classification,
+            "risk_color": "#ef4444" if risk_classification == "RISKY" else "#f59e0b" if risk_classification == "MODERATE" else "#10b981",
+            "inspection_source": metrics["inspection_source"],
+            "osm_names": json.loads(s.osm_names or "[]"),
+            "geometry_source": s.geometry_source,
+            "geometry_updated_at": s.geometry_updated_at.isoformat() if s.geometry_updated_at else None,
             "coordinates": json.loads(s.geometry_geojson) if s.geometry_geojson else []
         })
     return {"total": len(res), "segments": res}
@@ -1428,29 +1541,31 @@ def get_road_conditions(
     db: Session = Depends(get_db)
 ):
     """
-    Returns official monitored road conditions for the GIS map and structured road condition table.
+    Returns live road conditions for the GIS map and road condition table.
     Classifications: RISKY (Red), MODERATE (Yellow), SAFE (Green).
     """
     query = db.query(RoadSegment)
-    if risk_level and risk_level.upper() in ["RISKY", "MODERATE", "SAFE"]:
-        query = query.filter(RoadSegment.risk_classification == risk_level.upper())
     if search:
         query = query.filter(
             (RoadSegment.name.ilike(f"%{search}%")) |
             (RoadSegment.location.ilike(f"%{search}%"))
         )
     roads = query.order_by(RoadSegment.id).all()
+    damage_by_road, metrics_by_id = _road_condition_data(db, roads)
     results = []
     for r in roads:
-        potholes = r.potholes_count or 0
-        cond_pct = round(r.condition_percentage if r.condition_percentage is not None else 90.0, 1)
-        risk_cls = r.risk_classification or ("RISKY" if cond_pct < 50 else ("MODERATE" if cond_pct < 80 else "SAFE"))
+        metrics = metrics_by_id[r.id]
+        risk_cls = metrics["risk_classification"]
+        if risk_level and risk_level.upper() in ["RISKY", "MODERATE", "SAFE"] and risk_cls != risk_level.upper():
+            continue
+        potholes = metrics["potholes_count"]
+        cond_pct = metrics["condition_percentage"]
         color = "#ef4444" if risk_cls == "RISKY" else ("#f59e0b" if risk_cls == "MODERATE" else "#10b981")
-        badge = "Risky / Critical" if risk_cls == "RISKY" else ("Moderate" if risk_cls == "MODERATE" else "Safe")
+        badge = "Risky / Critical" if risk_cls == "RISKY" else ("Moderate" if risk_cls == "MODERATE" else "Healthy")
 
         coords = json.loads(r.geometry_geojson) if r.geometry_geojson else []
-        mid_lat = (r.start_lat + r.end_lat) / 2.0 if (r.start_lat and r.end_lat) else (coords[len(coords)//2][1] if coords else BELAGAVI_CENTER["lat"])
-        mid_lon = (r.start_lon + r.end_lon) / 2.0 if (r.start_lon and r.end_lon) else (coords[len(coords)//2][0] if coords else BELAGAVI_CENTER["lon"])
+        mid_lat = coords[len(coords) // 2][1] if coords else BELAGAVI_CENTER["lat"]
+        mid_lon = coords[len(coords) // 2][0] if coords else BELAGAVI_CENTER["lon"]
 
         results.append({
             "id": r.id,
@@ -1461,20 +1576,23 @@ def get_road_conditions(
             "speed_limit": r.speed_limit,
             "length_m": r.length_m,
             "potholes_count": potholes,
-            "total_damage_count": r.total_damage_count or 0,
+            "total_damage_count": metrics["total_damage_count"],
             "condition_percentage": cond_pct,
             "risk_classification": risk_cls,
             "risk_display": badge,
             "risk_color": color,
-            "inspection_source": r.inspection_source or "Demonstration Sample",
-            "verification_status": r.verification_status or "VERIFIED",
-            "last_inspected_date": r.last_inspected_date.strftime("%d %b %Y, %H:%M") if r.last_inspected_date else "Recent",
+            "inspection_source": metrics["inspection_source"],
+            "verification_status": metrics["verification_status"],
+            "last_inspected_date": metrics["last_inspected_date"].strftime("%d %b %Y, %H:%M") if metrics["last_inspected_date"] else "No verified inspection",
             "start_lat": r.start_lat,
             "start_lon": r.start_lon,
             "end_lat": r.end_lat,
             "end_lon": r.end_lon,
             "mid_lat": mid_lat,
             "mid_lon": mid_lon,
+            "osm_names": json.loads(r.osm_names or "[]"),
+            "geometry_source": r.geometry_source or "OSRM/OpenStreetMap",
+            "geometry_updated_at": r.geometry_updated_at.isoformat() if r.geometry_updated_at else None,
             "coordinates": coords
         })
     return {"total": len(results), "roads": results}
@@ -1515,7 +1633,7 @@ def get_road_history(road_id: int, db: Session = Depends(get_db)):
 
 @app.get("/api/gis/belagavi-info")
 def get_belagavi_gis_info():
-    """Returns official Belagavi geographic boundary limits, center, and road junctions."""
+    """Return Belagavi map bounds and the provenance of the shared road network."""
     return {
         "status": "success",
         "city": "Belagavi",
@@ -1524,10 +1642,10 @@ def get_belagavi_gis_info():
         "center": BELAGAVI_CENTER,
         "bbox": BELAGAVI_BBOX,
         "polygon": BELAGAVI_CITY_POLYGON,
-        "junctions": [
-            {"id": k, "name": v["name"], "lat": v["lat"], "lon": v["lon"], "type": v["type"]}
-            for k, v in BELAGAVI_JUNCTIONS.items()
-        ]
+        "junctions": [],
+        "road_corridors": len(BELAGAVI_ROAD_SEGMENTS),
+        "routing_engine": "OSRM",
+        "road_data_attribution": OSM_ATTRIBUTION
     }
 
 # ==========================================
@@ -1542,12 +1660,14 @@ def get_recommended_route(
     db: Session = Depends(get_db)
 ):
     """
-    Computes k-alternative routes over the Belagavi road network, evaluates damage exposure
-    from verified physical road defects, and provides an explainable low-risk recommendation.
+    Requests actual OSRM driving alternatives and evaluates them against verified database data.
     """
     verified_records = db.query(PhysicalDamageRecord).filter(
         PhysicalDamageRecord.verification_status == "Verified",
-        PhysicalDamageRecord.repair_status != "Repaired"
+        or_(
+            PhysicalDamageRecord.repair_status.is_(None),
+            PhysicalDamageRecord.repair_status.notin_(["Repaired", "Closed", "Verified Closed"])
+        )
     ).all()
     verified_list = [
         {
@@ -1560,17 +1680,32 @@ def get_recommended_route(
         }
         for r in verified_records
     ]
-    # Fetch official road segment health conditions from database
-    segments = db.query(RoadSegment).all()
+    segments = db.query(RoadSegment).order_by(RoadSegment.id).all()
+    _, road_metrics = _road_condition_data(db, segments)
     segment_conditions = {
-        s.id: {
-            "condition_percentage": s.condition_percentage if s.condition_percentage is not None else 90.0,
-            "potholes_count": s.potholes_count or 0,
-            "risk_classification": s.risk_classification or "SAFE"
+        segment.id: {
+            "id": segment.id,
+            "code": segment.segment_code,
+            "name": segment.name,
+            "length_m": segment.length_m,
+            "coordinates": json.loads(segment.geometry_geojson) if segment.geometry_geojson else [],
+            **road_metrics[segment.id]
         }
-        for s in segments
+        for segment in segments
     }
-    res = recommend_best_route(origin_lat, origin_lon, dest_lat, dest_lon, verified_list, segment_conditions=segment_conditions)
+    try:
+        res = recommend_best_route(
+            origin_lat,
+            origin_lon,
+            dest_lat,
+            dest_lon,
+            verified_list,
+            segment_conditions=segment_conditions
+        )
+    except NoRouteError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except RoutingServiceError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
     if res.get("status") == "error":
         raise HTTPException(status_code=400, detail=res.get("message"))
     return res
@@ -1929,6 +2064,44 @@ def update_repair(
             )
             db.add(obs)
 
+        if status in ["Repaired", "Closed"] and phys.road_segment_id:
+            db.flush()
+            road = db.query(RoadSegment).filter(RoadSegment.id == phys.road_segment_id).first()
+            if road:
+                active_records = _active_verified_damage_by_road(db).get(road.id, [])
+                if active_records:
+                    road_metrics = _live_road_metrics(road, active_records)
+                else:
+                    road_metrics = compute_road_condition(
+                        potholes_count=0,
+                        total_damage_count=0,
+                        speed_limit=road.speed_limit or 50,
+                        road_type=road.road_type or "Road"
+                    )
+                    road_metrics.update({
+                        "potholes_count": 0,
+                        "total_damage_count": 0,
+                        "inspection_source": "Repair Verification"
+                    })
+                road.potholes_count = road_metrics["potholes_count"]
+                road.total_damage_count = road_metrics["total_damage_count"]
+                road.condition_percentage = road_metrics["condition_percentage"]
+                road.risk_classification = road_metrics["risk_classification"]
+                road.inspection_source = road_metrics["inspection_source"]
+                road.verification_status = "VERIFIED"
+                road.last_inspected_date = datetime.utcnow()
+                db.add(RoadInspectionHistory(
+                    road_segment_id=road.id,
+                    inspection_date=road.last_inspected_date,
+                    potholes_count=road.potholes_count,
+                    total_damage_count=road.total_damage_count,
+                    condition_percentage=road.condition_percentage,
+                    risk_classification=road.risk_classification,
+                    inspection_source=road.inspection_source,
+                    inspector_name=verified_by or "Repair Verification",
+                    notes=f"Road condition refreshed after repair status changed to {status}."
+                ))
+
     db.commit()
     return {"status": "success", "repair_id": repair_id, "new_status": status}
 
@@ -2081,14 +2254,17 @@ def get_dashboard_statistics(db: Session = Depends(get_db)):
     Overview Dashboard statistics generated live from the database.
     Feeds charts (Risky, Moderate, Safe road distribution) and summary KPI cards.
     """
-    total_roads = db.query(RoadSegment).count()
-    risky_cnt = db.query(RoadSegment).filter(RoadSegment.risk_classification == "RISKY").count()
-    moderate_cnt = db.query(RoadSegment).filter(RoadSegment.risk_classification == "MODERATE").count()
-    safe_cnt = db.query(RoadSegment).filter(RoadSegment.risk_classification == "SAFE").count()
-
-    total_potholes = db.query(func.sum(RoadSegment.potholes_count)).scalar() or 0
-    avg_cond = db.query(func.avg(RoadSegment.condition_percentage)).scalar() or 0.0
-    avg_cond = round(float(avg_cond), 1)
+    roads = db.query(RoadSegment).order_by(RoadSegment.id).all()
+    _, road_metrics = _road_condition_data(db, roads)
+    total_roads = len(roads)
+    risky_cnt = sum(1 for metrics in road_metrics.values() if metrics["risk_classification"] == "RISKY")
+    moderate_cnt = sum(1 for metrics in road_metrics.values() if metrics["risk_classification"] == "MODERATE")
+    safe_cnt = total_roads - risky_cnt - moderate_cnt
+    total_potholes = sum(metrics["potholes_count"] for metrics in road_metrics.values())
+    avg_cond = round(
+        sum(metrics["condition_percentage"] for metrics in road_metrics.values()) / total_roads,
+        1
+    ) if total_roads else 0.0
 
     pending_reports = db.query(Submission).filter(
         Submission.submitter_type == "citizen",

@@ -16,17 +16,15 @@ def test_health_check_endpoint():
     assert data["service"] == "ROADVISION AI"
     assert "models" in data
 
-def test_inspection_locations_include_route_junctions_and_road_corridors():
+def test_inspection_locations_come_from_osm_road_corridors():
     response = client.get("/api/inspection/locations")
     assert response.status_code == 200
     data = response.json()
     locations = {location["id"]: location for location in data["locations"]}
 
-    assert "junction:CHEN_CIRC" in locations
-    assert "junction:KANBARGI_CR" in locations
-    assert "junction:HALAGA_INT" in locations
-    assert "road:1" in locations
-    assert locations["road:1"]["name"] == "Khanapur Road (Tilakwadi to 3rd Gate)"
+    assert data["source"] == "OSRM/OpenStreetMap road geometry"
+    assert "road:1:start" in locations
+    assert locations["road:1:start"]["name"]
     assert all(
         is_within_belagavi(location["latitude"], location["longitude"])
         for location in data["locations"]
